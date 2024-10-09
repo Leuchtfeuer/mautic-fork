@@ -73,6 +73,14 @@ class CustomFieldHelper
                         break;
                 }
                 break;
+            case 'text':
+            case 'textarea':
+                // Suche nach Text zwischen Prozentzeichen und behandle ihn als Datum/Zeit
+                $value = preg_replace_callback('/%([^%]+)%/', function($matches) {
+                    $dtHelper = new DateTimeHelper($matches[1], null, 'local');
+                    return $dtHelper->toLocalString('Y-m-d H:i:s');
+                }, $value);
+                break;
         }
 
         return $value;
