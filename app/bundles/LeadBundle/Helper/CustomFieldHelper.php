@@ -15,6 +15,16 @@ class CustomFieldHelper
 
     public const TYPE_SELECT  = 'select';
 
+    public static ?DateTimeHelper $dateTimeHelper = null;
+
+    private static function getDateTimeHelper($string = null, $timezone = null, $fromFormat = null): DateTimeHelper
+    {
+        if (self::$dateTimeHelper !== null) {
+            return self::$dateTimeHelper;
+        }
+        return new DateTimeHelper($string, $timezone, $fromFormat);
+    }
+
     /**
      * Fixes value type for specific field types.
      *
@@ -49,7 +59,6 @@ class CustomFieldHelper
             // do not transform null values
             return null;
         }
-
         $type = $field['type'];
         switch ($type) {
             case 'datetime':
@@ -60,7 +69,7 @@ class CustomFieldHelper
                     return null;
                 }
 
-                $dtHelper = new DateTimeHelper($value, null, 'local');
+                $dtHelper = self::getDateTimeHelper($value, null, 'local');
                 switch ($type) {
                     case 'datetime':
                         $value = $dtHelper->toLocalString('Y-m-d H:i:s');
@@ -75,9 +84,9 @@ class CustomFieldHelper
                 break;
             case 'text':
             case 'textarea':
-                // Suche nach Text zwischen Prozentzeichen und behandle ihn als Datum/Zeit
+                // Looking for text inbetween % characters and treating it as datetime
                 $value = preg_replace_callback('/%([^%]+)%/', function($matches) {
-                    $dtHelper = new DateTimeHelper($matches[1], null, 'local');
+                    $dtHelper = self::getDateTimeHelper($matches[1], null, 'local');
                     return $dtHelper->toLocalString('Y-m-d H:i:s');
                 }, $value);
                 break;

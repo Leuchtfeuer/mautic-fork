@@ -4,9 +4,15 @@ namespace Mautic\LeadBundle\Tests\Helper;
 
 use Mautic\CoreBundle\Helper\DateTimeHelper;
 use Mautic\LeadBundle\Helper\CustomFieldHelper;
+use PHPUnit\Framework\TestCase;
 
-class CustomFieldHelperTest extends \PHPUnit\Framework\TestCase
+class CustomFieldHelperTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+    }
+
     public function testFixValueTypeForBooleans(): void
     {
         $this->assertNull(CustomFieldHelper::fixValueType(CustomFieldHelper::TYPE_BOOLEAN, null));
@@ -166,5 +172,32 @@ class CustomFieldHelperTest extends \PHPUnit\Framework\TestCase
         ];
 
         $this->assertSame($values, CustomFieldHelper::fieldsValuesTransformer($fields, $values));
+    }
+
+    public function testFieldValueTransformerWithTokenizedTextField()
+    {
+        $mockDateTimeHelper = $this->createMock(DateTimeHelper::class);
+        $mockDateTimeHelper->method('toLocalString')->willReturn('2023-05-20 00:00:00');
+
+        $reflectionClass = new \ReflectionClass(CustomFieldHelper::class);
+        $customFieldHelper = $reflectionClass->newInstanceWithoutConstructor();
+        $reflectionProperty = $reflectionClass->getProperty('dateTimeHelper');
+        $reflectionProperty->setValue($customFieldHelper, $mockDateTimeHelper);
+
+        $field = ['type' => 'text'];
+        $value = 'Hello %today%';
+
+        $result = CustomFieldHelper::fieldValueTransfomer($field, $value);
+
+        $this->assertEquals('Hello 2023-05-20 00:00:00', $result);
+    }
+
+    protected function tearDown(): void
+    {
+        $reflectionClass = new \ReflectionClass(CustomFieldHelper::class);
+        $reflectionProperty = $reflectionClass->getProperty('dateTimeHelper');
+        $reflectionProperty->setValue(null, null);
+
+        parent::tearDown();
     }
 }
