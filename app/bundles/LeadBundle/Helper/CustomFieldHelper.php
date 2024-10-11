@@ -17,11 +17,12 @@ class CustomFieldHelper
 
     public static ?DateTimeHelper $dateTimeHelper = null;
 
-    private static function getDateTimeHelper($string = null, $timezone = null, $fromFormat = null): DateTimeHelper
+    private static function getDateTimeHelper(\DateTimeInterface|string $string = null, string $timezone = null, string $fromFormat = null): DateTimeHelper
     {
-        if (self::$dateTimeHelper !== null) {
+        if (null !== self::$dateTimeHelper) {
             return self::$dateTimeHelper;
         }
+
         return new DateTimeHelper($string, $timezone, $fromFormat);
     }
 
@@ -85,8 +86,9 @@ class CustomFieldHelper
             case 'text':
             case 'textarea':
                 // Looking for text inbetween % characters and treating it as datetime
-                $value = preg_replace_callback('/%([^%]+)%/', function($matches) {
+                $value = preg_replace_callback('/%([^%]+)%/', function ($matches) {
                     $dtHelper = self::getDateTimeHelper($matches[1], null, 'local');
+
                     return $dtHelper->toLocalString('Y-m-d H:i:s');
                 }, $value);
                 break;
