@@ -299,7 +299,7 @@ class CampaignSubscriberFunctionalTest extends MauticMysqlTestCase
         $applicationTester = new ApplicationTester($application);
 
         $contactIds = $this->createContacts();
-        $campaign = $this->createCampaignWithTokens($contactIds);
+        $campaign   = $this->createCampaignWithTokens($contactIds);
 
         // Force Doctrine to re-fetch the entities
         $this->em->clear();
@@ -315,15 +315,14 @@ class CampaignSubscriberFunctionalTest extends MauticMysqlTestCase
         // Force Doctrine to re-fetch the entities to ensure we're getting the latest data
         $this->em->clear();
 
-        $now = new \DateTime();
+        $now   = new \DateTime();
         $today = new \DateTime('today');
 
         /** @var Lead $contact */
         $contact = $this->contactRepository->getEntity($contactIds[0]);
 
-
         $positionValue = $contact->getFieldValue('position');
-        $cityValue = $contact->getFieldValue('city');
+        $cityValue     = $contact->getFieldValue('city');
 
         $this->assertNotNull($positionValue, 'Position value should not be null');
         $this->assertNotNull($cityValue, 'City value should not be null');
@@ -928,7 +927,9 @@ class CampaignSubscriberFunctionalTest extends MauticMysqlTestCase
         return $campaign;
     }
 
-
+    /**
+     * @param array<int, int> $contactIds
+     */
     private function createCampaignWithTokens(array $contactIds): Campaign
     {
         $campaign = new Campaign();
@@ -940,7 +941,9 @@ class CampaignSubscriberFunctionalTest extends MauticMysqlTestCase
         foreach ($contactIds as $key => $contactId) {
             $campaignLead = new CampaignLead();
             $campaignLead->setCampaign($campaign);
-            $campaignLead->setLead($this->em->getReference(Lead::class, $contactId));
+            /** @var Lead $lead */
+            $lead = $this->em->getReference(Lead::class, $contactId);
+            $campaignLead->setLead($lead);
             $campaignLead->setDateAdded(new \DateTime());
             $this->em->persist($campaignLead);
             $campaign->addLead($key, $campaignLead);

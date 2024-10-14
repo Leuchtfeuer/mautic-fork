@@ -17,13 +17,13 @@ class CustomFieldHelper
 
     public static ?DateTimeHelper $dateTimeHelper = null;
 
-    private static function getDateTimeHelper(\DateTimeInterface|string $string = null, string $timezone = null, string $fromFormat = null): DateTimeHelper
+    private static function getDateTimeHelper(\DateTimeInterface|string $string = '', string $fromFormat = 'Y-m-d H:i:s', string $timezone = 'local'): DateTimeHelper
     {
         if (null !== self::$dateTimeHelper) {
             return self::$dateTimeHelper;
         }
 
-        return new DateTimeHelper($string, $timezone, $fromFormat);
+        return new DateTimeHelper($string, $fromFormat, $timezone);
     }
 
     /**
@@ -70,7 +70,11 @@ class CustomFieldHelper
                     return null;
                 }
 
-                $dtHelper = self::getDateTimeHelper($value, null, 'local');
+                if (!($value instanceof \DateTimeInterface) && !is_string($value)) {
+                    throw new \InvalidArgumentException('Wrong type given. String or DateTimeInterface expected.');
+                }
+
+                $dtHelper = self::getDateTimeHelper($value);
                 switch ($type) {
                     case 'datetime':
                         $value = $dtHelper->toLocalString('Y-m-d H:i:s');
@@ -85,9 +89,13 @@ class CustomFieldHelper
                 break;
             case 'text':
             case 'textarea':
+                if (!is_string($value)) {
+                    throw new \InvalidArgumentException('Wrong type given. String or DateTimeInterface expected.');
+                }
+
                 // Looking for text inbetween % characters and treating it as datetime
                 $value = preg_replace_callback('/%([^%]+)%/', function ($matches) {
-                    $dtHelper = self::getDateTimeHelper($matches[1], null, 'local');
+                    $dtHelper = self::getDateTimeHelper($matches[1]);
 
                     return $dtHelper->toLocalString('Y-m-d H:i:s');
                 }, $value);
