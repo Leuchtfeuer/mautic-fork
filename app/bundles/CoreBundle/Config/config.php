@@ -37,7 +37,7 @@ return [
         ],
         'public' => [
             'mautic_js' => [
-                'path'       => '/mtc.js',
+                'path'       => '/lftr.js',
                 'controller' => 'MauticCoreBundle:Js:index',
             ],
             'mautic_base_index' => [
