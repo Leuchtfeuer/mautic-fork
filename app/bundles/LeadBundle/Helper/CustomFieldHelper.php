@@ -42,7 +42,7 @@ class CustomFieldHelper
         }
 
         return match ($type) {
-            self::TYPE_NUMBER  => is_numeric($value) || $value === '' ? (float) $value : $value,
+            self::TYPE_NUMBER  => is_numeric($value) || '' === $value ? (float) $value : $value,
             self::TYPE_BOOLEAN => (bool) $value,
             self::TYPE_SELECT  => is_scalar($value) ? (string) $value : $value,
             default            => $value,
