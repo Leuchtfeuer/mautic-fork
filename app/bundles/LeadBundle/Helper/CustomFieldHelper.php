@@ -42,9 +42,9 @@ class CustomFieldHelper
         }
 
         return match ($type) {
-            self::TYPE_NUMBER  => (float) $value,
+            self::TYPE_NUMBER  => is_numeric($value) || $value === '' ? (float) $value : $value,
             self::TYPE_BOOLEAN => (bool) $value,
-            self::TYPE_SELECT  => (string) $value,
+            self::TYPE_SELECT  => is_scalar($value) ? (string) $value : $value,
             default            => $value,
         };
     }
@@ -116,7 +116,7 @@ class CustomFieldHelper
     public static function fieldsValuesTransformer(array $fields, array $values): array
     {
         foreach ($values as $alias => &$value) {
-            if (!empty($fields[$alias])) {
+            if (!empty($fields[$alias]) && is_array($fields[$alias])) {
                 $value = self::fieldValueTransfomer($fields[$alias], $value);
             }
         }

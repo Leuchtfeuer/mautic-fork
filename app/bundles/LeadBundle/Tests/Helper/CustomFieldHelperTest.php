@@ -185,7 +185,7 @@ class CustomFieldHelperTest extends TestCase
         $reflectionProperty->setValue($customFieldHelper, $mockDateTimeHelper);
 
         $field = ['type' => 'text'];
-        $value = 'Hello %today%';
+        $value = 'Hello %TODAY%';
 
         $result = CustomFieldHelper::fieldValueTransfomer($field, $value);
 
