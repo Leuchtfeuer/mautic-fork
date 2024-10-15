@@ -25,7 +25,7 @@ return [
         ],
         'public' => [
             'mautic_page_tracker' => [
-                'path'       => '/lftr.gif',
+                'path'       => '/mtracking.gif',
                 'controller' => 'MauticPageBundle:Public:trackingImage',
             ],
             'mautic_page_tracker_cors' => [
