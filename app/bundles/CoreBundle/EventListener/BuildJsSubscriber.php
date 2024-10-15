@@ -331,7 +331,7 @@ MauticJS.isPixelLoaded = function(domOnly) {
         MauticJS.trackingPixel = null;
         var imgs = Array.prototype.slice.apply(document.getElementsByTagName('img'));
         for (var i = 0; i < imgs.length; i++) {
-            if (imgs[i].src.indexOf('mtracking.gif') !== -1) {
+            if (imgs[i].src.indexOf('lftr.gif') !== -1) {
                 MauticJS.trackingPixel = imgs[i];
                 break;
             }
