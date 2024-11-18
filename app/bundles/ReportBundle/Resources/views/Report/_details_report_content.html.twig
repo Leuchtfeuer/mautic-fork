@@ -14,21 +14,17 @@
 {% if columnOrder is not empty or aggregatorOrder is not empty %}
     <!-- table section -->
     <div class="col-xs-12">
-        <div id="page-list-wrapper">
+        <div class="panel panel-default bdr-t-wdh-0 mb-0">
             <div class="page-list">
                 <div class="table-responsive table-responsive-force">
-                    <table class="table table-hover report-list" id="reportTable">
+                    <table class="table table-hover table-striped table-bordered report-list" id="reportTable">
                         <thead>
                         <tr>
                             <th class="col-report-count"></th>
                             {% for key in columnOrder %}
                                 {% if columns[key] is defined %}
                                     {# order by alias if exists, if not then by column name #}
-                                    {%- set orderBy = (columns[key].alias is defined and columns[key].alias starts with 'channel.')
-                                        ? columns[key].alias
-                                        : key
-                                    -%}
-
+                                    {%- set orderBy = columns[key].alias|default((key starts with 'channel.') ? key|replace({'.': '_'}) : key) -%}
                                     {{ include('@MauticCore/Helper/tableheader.html.twig', {
                                         'sessionVar': 'report.' ~ report.id,
                                         'orderBy': orderBy,
@@ -59,56 +55,45 @@
                                 <tr>
                                     <td>{{ startCount }}</td>
                                     {% for key in columnOrder|filter(v => columns[v] is defined) %}
-                                        {%- set collapse = columns[key].collapse is defined ? columns[key].collapse : false -%}
                                         <td>
                                             {%- set closeLink = false -%}
                                             {% if columns[key].link is defined and row[columns[key].alias] is defined and row[columns[key].alias] is not empty %}
-                                                {%- set closeLink = true -%}
-                                                {% if columns[key].linkParameters is defined %}
-                                                    {% set parameters = {} %}
-                                                    {% for k,v in columns[key].linkParameters %}
-                                                        {% set parameters = parameters|merge({ (k) : (v is same as "%alias%" ? row[columns[key].alias] : v)}) %}
-                                                    {% endfor %}
-                                                    <a href="{{ path(columns[key].link, parameters) }}" {{ parameters.objectId is defined ? 'class="label label-success"' : '' }}>
+                                            {%- set closeLink = true -%}
+                                            {% if columns[key].linkParameters is defined %}
+                                            {% set parameters = {} %}
+                                            {% for k,v in columns[key].linkParameters %}
+                                                {% set parameters = parameters|merge({ (k) : (v is same as "%alias%" ? row[columns[key].alias] : v)}) %}
+                                            {% endfor %}
+                                            <a href="{{ path(columns[key].link, parameters) }}" {{ parameters.objectId is defined ? 'class="label label-success"' : '' }}>
                                                 {% else %}
-                                                    <a href="{{ path(columns[key].link, {'objectAction': 'view', 'objectId': row[columns[key].alias]}) }}" class="label label-success">
-                                                {% endif %}
-                                            {% endif %}
-                                            {%- set cellType = columns[key].type -%}
-                                            {%- set cellVal = row[columns[key].alias] -%}
-                                            {# For grouping by datetime fields, so we don't get the timestamp on them #}
-                                            {% if 'datetime' is same as cellType and 10 is same as cellVal|length %}
-                                                {%- set cellType = 'date' -%}
-                                            {% endif %}
-                                            {% if cellVal is not empty %}
-                                                {% if 'datetime' is same as cellType %}
-                                                    {{ dateToFullConcat(cellVal, 'UTC') }}
-                                                {% elseif 'date' is same as cellType %}
-                                                    {{ dateToShort(cellVal, 'UTC') }}
-                                                {% else %}
-                                                    {% set value = format(cellVal, cellType)|purify %}
-                                                    {% if collapse == false %}
-                                                        {{ format(cellVal, cellType)|purify }}
-                                                    {% else %}
-                                                        {% set value = htmlEntityDecode(format(cellVal, cellType)|purify) %}
-                                                        <div data-toggle="collapse" data-target="#audit-log-details-{{ startCount }}" class="accordion-toggle" style="cursor: pointer">
-                                                            {{ value|length > 50 ? value|slice(0, 50) ~ '...' : value }}
-                                                        </div>
+                                                <a href="{{ path(columns[key].link, {'objectAction': 'view', 'objectId': row[columns[key].alias]}) }}" class="label label-success">
                                                     {% endif %}
-                                                {% endif %}
-                                            {% endif %}
-                                            {% if closeLink %}</a>{% endif %}
-                                            {% if collapse %}
-                                            <div class="accordian-body collapse" id="audit-log-details-{{ startCount }}">
-                                                <pre id="pre-audit-log-details-{{ startCount }}"></pre>
-                                            </div>
-                                            <script>
-                                                var txt = document.createElement("textarea");
-                                                txt.innerHTML = '{{ (value) }}';
-                                                document.getElementById('pre-audit-log-details-{{ startCount }}').textContent
-                                                    = JSON.stringify(JSON.parse((txt.value)), undefined, 2);
-                                            </script>
-                                            {% endif %}
+                                                    {% endif %}
+                                                    {%- set cellType = columns[key].type -%}
+                                                    {%- set cellVal = row[columns[key].alias] -%}
+                                                    {# If field is date or datetime, and is formatted with string which does not convert back to date simply print the formatted string. #}
+                                                    {% if cellVal is not empty %}
+                                                        {% if cellType in ['date', 'datetime'] and strtotime(cellVal) == false %}
+                                                            {{ cellVal }}
+                                                        {% else %}
+                                                            {% if 'datetime' is same as cellType %}
+                                                                {{ dateToFullConcat(cellVal, 'UTC') }}
+                                                            {% elseif 'date' is same as cellType %}
+                                                                {{ dateToShort(cellVal, 'UTC') }}
+                                                            {% else %}
+                                                                {% set value = format(cellVal, cellType) %}
+                                                                {% if collapse == false %}
+                                                                    {{ format(cellVal, cellType) }}
+                                                                {% else %}
+                                                                    {% set value = htmlEntityDecode(format(cellVal, cellType)) %}
+                                                                    <div data-toggle="collapse" data-target="#audit-log-details-{{ startCount }}" class="accordion-toggle" style="cursor: pointer">
+                                                                        {{ value|length > 50 ? value|slice(0, 50) ~ '...' : value }}
+                                                                    </div>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    {% endif %}
+                                                    {% if closeLink %}</a>{% endif %}
                                         </td>
                                     {% endfor %}
                                     {% if aggregatorCount %}
