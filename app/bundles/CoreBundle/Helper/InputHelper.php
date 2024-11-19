@@ -458,16 +458,13 @@ class InputHelper
             // detect if there is any unicode character in the passed string
             $hasUnicode = strlen($value) != strlen(utf8_decode($value));
 
-            // Encode the incoming value before cleaning, it convert unicode to encoded strings
-            $value = $hasUnicode ? rawurlencode($value) : $value;
-
-            $value = self::getFilter(true)->clean($value, 'html');
+            $value = self::getFilter(true)->clean($value, $hasUnicode ? 'raw' : 'html');
 
             // After cleaning encode the value
             $value = $hasUnicode ? rawurldecode($value) : $value;
 
             // Was a doctype found?
-            if ($doctypeFound) {
+            if ($doctypeFound && false === $hasUnicode) {
                 $value = "$doctype[0]$value";
             }
 
@@ -541,5 +538,23 @@ class InputHelper
         }
 
         return \URLify::transliterate((string) $value);
+    }
+
+    /**
+     * Clean input evil attributes to prevent XSS
+     * Remove any attribute starting with "on" or xmlns or javascript:.
+     *
+     * @return string
+     */
+    public static function cleanInputAttributes(?string $value)
+    {
+        $value = htmlspecialchars($value, ENT_SUBSTITUTE, 'UTF-8', false);
+        // Remove any attribute starting with "on" or javascript used in href, src, value, data, etc.
+        preg_match('/(on[A-Za-z]*\s*=|javascript:)/i', $value, $result);
+        if (!empty($result)) {
+            return '';
+        }
+
+        return $value;
     }
 }
