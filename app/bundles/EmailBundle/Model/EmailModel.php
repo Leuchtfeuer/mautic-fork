@@ -2357,26 +2357,29 @@ class EmailModel extends FormModel implements AjaxLookupModelInterface
      *
      * @return string
      */
-    public function buildUrl($route, $routeParams = [], $absolute = true, $clickthrough = [], $utmTags = [])
-    {
+    public function buildUrl(
+        $route,
+        $routeParams = [],
+        $absolute = true,
+        $clickthrough = [],
+        $utmTags = [],
+        bool $useConfiguredUrl = true
+    ): string {
+         $parts = parse_url($this->coreParametersHelper->get('site_url') ?: '');
+
         $parts = parse_url($this->coreParametersHelper->get('site_url') ?: '');
 
-        $context         = $this->router->getContext();
-        $original_host   = $context->getHost();
-        $original_scheme = $context->getScheme();
-
+        if (!$useConfiguredUrl || false === $parts) {
+            return parent::buildUrl($route, $routeParams, $absolute, $clickthrough, $utmTags);
+        }
         if (!empty($parts['host'])) {
             $this->router->getContext()->setHost($parts['host']);
         }
         if (!empty($parts['scheme'])) {
             $this->router->getContext()->setScheme($parts['scheme']);
         }
-
-        $url = parent::buildUrl($route, $routeParams, $absolute, $clickthrough, $utmTags);
-
-        $context->setHost($original_host);
-        $context->setScheme($original_scheme);
-
-        return $url;
+        $referenceType = ($absolute) ? UrlGeneratorInterface::ABSOLUTE_URL : UrlGeneratorInterface::ABSOLUTE_PATH;
+        $url           = $this->router->generate($route, $routeParams, $referenceType);
+        return $url.((!empty($clickthrough)) ? '?ct='.$this->encodeArrayForUrl($clickthrough) : '');
     }
 }
