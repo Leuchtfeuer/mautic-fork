@@ -79,6 +79,12 @@ return [
                     'request_stack',
                 ],
             ],
+            'mautic.focus.subscriber.report' => [
+                'class'     => \MauticPlugin\MauticFocusBundle\EventListener\ReportSubscriber::class,
+                'arguments' => [
+                    'mautic.lead.model.company_report_data',
+                ],
+            ],
             'mautic.focus.stats.subscriber' => [
                 'class'     => \MauticPlugin\MauticFocusBundle\EventListener\StatsSubscriber::class,
                 'arguments' => [
