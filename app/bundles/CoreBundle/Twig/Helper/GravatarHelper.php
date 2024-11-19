@@ -52,7 +52,7 @@ final class GravatarHelper
 
         $default = (str_contains($default, '.') && !str_starts_with($default, 'http')) ? UrlHelper::rel2abs($default) : $default;
 
-        return $url.('&d='.urlencode($default));
+        return $default;
     }
 
     public function getName(): string
