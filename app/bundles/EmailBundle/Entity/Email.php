@@ -17,6 +17,7 @@ use Mautic\CoreBundle\Entity\TranslationEntityTrait;
 use Mautic\CoreBundle\Entity\VariantEntityInterface;
 use Mautic\CoreBundle\Entity\VariantEntityTrait;
 use Mautic\CoreBundle\Helper\EmojiHelper;
+use Mautic\CoreBundle\Helper\UrlHelper;
 use Mautic\FormBundle\Entity\Form;
 use Mautic\LeadBundle\Entity\LeadList;
 use Mautic\LeadBundle\Form\Validator\Constraints\LeadListAccess;
@@ -111,12 +112,12 @@ class Email extends FormEntity implements VariantEntityInterface, TranslationEnt
     private $emailType = 'template';
 
     /**
-     * @var \DateTime
+     * @var \DateTime|null
      */
     private $publishUp;
 
     /**
-     * @var \DateTime
+     * @var \DateTime|null
      */
     private $publishDown;
 
@@ -219,6 +220,8 @@ class Email extends FormEntity implements VariantEntityInterface, TranslationEnt
         $this->variantStartDate = null;
         $this->emailType        = null;
         $this->sessionId        = 'new_'.hash('sha1', uniqid(mt_rand()));
+        $this->publishUp        = null;
+        $this->publishDown      = null;
         $this->clearTranslations();
         $this->clearVariants();
         $this->clearStats();
@@ -1113,22 +1116,15 @@ class Email extends FormEntity implements VariantEntityInterface, TranslationEnt
     }
 
     /**
-     * Check all links in content and decode &amp;
-     * This even works with double encoded ampersands.
+     * Check all links in content and decode ampersands.
      *
-     * @param $content
+     * @param string $content
      */
     private function decodeAmpersands(&$content)
     {
         if (preg_match_all('/((https?|ftps?):\/\/)([a-zA-Z0-9-\.{}]*[a-zA-Z0-9=}]*)(\??)([^\s\"\]]+)?/i', $content, $matches)) {
             foreach ($matches[0] as $url) {
-                $newUrl = $url;
-
-                while (false !== strpos($newUrl, '&amp;')) {
-                    $newUrl = str_replace('&amp;', '&', $newUrl);
-                }
-
-                $content = str_replace($url, $newUrl, $content);
+                $content = str_replace($url, UrlHelper::decodeAmpersands($url), $content);
             }
         }
     }
