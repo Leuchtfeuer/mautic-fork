@@ -50,8 +50,14 @@ class TransportCallback
             $this->updateStatDetails($stat, $comments, $dncReason);
 
             $email   = $stat->getEmail();
-            $channel = ($email) ? ['email' => $email->getId()] : 'email';
             foreach ($contacts as $contact) {
+                if (str_starts_with($comments, 'SOFT: AWS')) {
+                    $channel = 'AWS';
+                } elseif (str_starts_with($comments, 'SOFT')) {
+                    $channel = 'mailjet';
+                } else {
+                    $channel = ($email) ? ['email' => $email->getId()] : 'email';
+                }
                 $this->dncModel->addDncForContact($contact->getId(), $channel, $dncReason, $comments);
             }
         }
@@ -69,7 +75,13 @@ class TransportCallback
 
         if ($contacts = $result->getContacts()) {
             foreach ($contacts as $contact) {
-                $channel = ($channelId) ? ['email' => $channelId] : 'email';
+                if (str_starts_with($comments, 'SOFT: AWS')) {
+                    $channel = 'AWS';
+                } elseif (str_starts_with($comments, 'SOFT')) {
+                    $channel = 'mailjet';
+                } else {
+                    $channel = ($channelId) ? ['email' => $channelId] : 'email';
+                }
                 $this->dncModel->addDncForContact($contact->getId(), $channel, $dncReason, $comments);
             }
         }
@@ -83,7 +95,13 @@ class TransportCallback
      */
     public function addFailureByContactId($id, $comments, $dncReason = DNC::BOUNCED, $channelId = null)
     {
-        $channel = ($channelId) ? ['email' => $channelId] : 'email';
+        if (str_starts_with($comments, 'SOFT: AWS')) {
+            $channel = 'AWS';
+        } elseif (str_starts_with($comments, 'SOFT')) {
+            $channel = 'mailjet';
+        } else {
+            $channel = ($channelId) ? ['email' => $channelId] : 'email';
+        }
         $this->dncModel->addDncForContact($id, $channel, $dncReason, $comments);
     }
 

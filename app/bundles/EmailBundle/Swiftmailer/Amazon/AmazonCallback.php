@@ -74,21 +74,21 @@ class AmazonCallback
     {
         switch ($type) {
             case 'SubscriptionConfirmation':
-                    // Confirm Amazon SNS subscription by calling back the SubscribeURL from the playload
-                    try {
-                        $response = $this->httpClient->get($payload['SubscribeURL']);
-                        if (200 == $response->getStatusCode()) {
-                            $this->logger->info('Callback to SubscribeURL from Amazon SNS successfully');
-                            break;
-                        }
-
-                        $reason = 'HTTP Code '.$response->getStatusCode().', '.$response->getBody();
-                    } catch (TransferException $e) {
-                        $reason = $e->getMessage();
+                // Confirm Amazon SNS subscription by calling back the SubscribeURL from the playload
+                try {
+                    $response = $this->httpClient->get($payload['SubscribeURL']);
+                    if (200 == $response->getStatusCode()) {
+                        $this->logger->info('Callback to SubscribeURL from Amazon SNS successfully');
+                        break;
                     }
 
-                    $this->logger->error('Callback to SubscribeURL from Amazon SNS failed, reason: '.$reason);
-            break;
+                    $reason = 'HTTP Code '.$response->getStatusCode().', '.$response->getBody();
+                } catch (TransferException $e) {
+                    $reason = $e->getMessage();
+                }
+
+                $this->logger->error('Callback to SubscribeURL from Amazon SNS failed, reason: '.$reason);
+                break;
             case 'Notification':
                 $message = json_decode($payload['Message'], true);
 
@@ -123,7 +123,7 @@ class AmazonCallback
 
             break;
             case 'Bounce':
-                if ('Permanent' == $payload['bounce']['bounceType']) {
+                if ('Permanent' === $payload['bounce']['bounceType']) {
                     $emailId = null;
 
                     if (isset($payload['mail']['headers'])) {
@@ -134,10 +134,48 @@ class AmazonCallback
                         }
                     }
 
-                    // Get bounced recipients in an array
+                    // Get hard bounced recipients in an array
+                    $hardBouncedRecipients = $payload['bounce']['bouncedRecipients'];
+                    foreach ($hardBouncedRecipients as $hardBouncedRecipient) {
+                        $hardBounceSubType    = $payload['bounce']['bounceSubType'];
+                        $hardBounceDiagnostic = array_key_exists('diagnosticCode', $hardBouncedRecipient) ? $hardBouncedRecipient['diagnosticCode'] : 'unknown';
+                        $bounceCode           = 'HARD: AWS: '.$hardBounceSubType.': '.$hardBounceDiagnostic;
+                        $this->transportCallback->addFailureByAddress($hardBouncedRecipient['emailAddress'], $bounceCode, DoNotContact::BOUNCED, $emailId);
+                        $this->logger->debug("Mark email '".$hardBouncedRecipient['emailAddress']."' as bounced, reason: ".$bounceCode);
+                    }
+                } elseif ('Transient' === $payload['bounce']['bounceType']) {
+                    $emailId = null;
+                    if (isset($payload['mail']['headers'])) {
+                        foreach ($payload['mail']['headers'] as $header) {
+                            if ('X-EMAIL-ID' === $header['name']) {
+                                $emailId = $header['value'];
+                            }
+                        }
+                    }
+                    // Get soft bounced recipients in an array
+                    $softBouncedRecipients = $payload['bounce']['bouncedRecipients'];
+                    foreach ($softBouncedRecipients as $softBouncedRecipient) {
+                        $softBounceSubType    = $payload['bounce']['bounceSubType'];
+                        $softBounceDiagnostic = array_key_exists('diagnosticCode', $softBouncedRecipient) ? $softBouncedRecipient['diagnosticCode'] : 'unknown';
+                        $bounceCode           = 'SOFT: AWS: '.$softBounceSubType.': '.$softBounceDiagnostic;
+                        $this->transportCallback->addFailureByAddress($softBouncedRecipient['emailAddress'], $bounceCode, DoNotContact::BOUNCED, $emailId);
+                        $this->logger->debug("Mark email '".$softBouncedRecipient['emailAddress']."' as bounced, reason: ".$bounceCode);
+                    }
+                } else {
+                    $emailId = null;
+                    if (isset($payload['mail']['headers'])) {
+                        foreach ($payload['mail']['headers'] as $header) {
+                            if ('X-EMAIL-ID' === $header['name']) {
+                                $emailId = $header['value'];
+                            }
+                        }
+                    }
+                    // Get other bounced recipients in an array
                     $bouncedRecipients = $payload['bounce']['bouncedRecipients'];
                     foreach ($bouncedRecipients as $bouncedRecipient) {
-                        $bounceCode = array_key_exists('diagnosticCode', $bouncedRecipient) ? $bouncedRecipient['diagnosticCode'] : 'unknown';
+                        $bounceSubType        = $payload['bounce']['bounceSubType'];
+                        $bounceDiagnostic     = array_key_exists('diagnosticCode', $bouncedRecipient) ? $bouncedRecipient['diagnosticCode'] : 'unknown';
+                        $bounceCode           = 'OTHER: AWS: '.$bounceSubType.': '.$bounceDiagnostic;
                         $this->transportCallback->addFailureByAddress($bouncedRecipient['emailAddress'], $bounceCode, DoNotContact::BOUNCED, $emailId);
                         $this->logger->debug("Mark email '".$bouncedRecipient['emailAddress']."' as bounced, reason: ".$bounceCode);
                     }
