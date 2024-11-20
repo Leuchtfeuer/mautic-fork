@@ -619,6 +619,23 @@ return [
             ],
         ],
         'commands' => [
+            'mautic.core.command.transifex_pull' => [
+                'tag'       => 'console.command',
+                'class'     => \Mautic\CoreBundle\Command\PullTransifexCommand::class,
+                'arguments' => [
+                    'transifex.factory',
+                    'translator',
+                    'mautic.helper.core_parameters',
+                ],
+            ],
+            'mautic.core.command.transifex_push' => [
+                'tag'       => 'console.command',
+                'class'     => \Mautic\CoreBundle\Command\PushTransifexCommand::class,
+                'arguments' => [
+                    'transifex.factory',
+                    'translator',
+                ],
+            ],
             'mautic.core.command.do_not_sell' => [
                 'class'     => \Mautic\CoreBundle\Command\UpdateDoNotSellListCommand::class,
                 'arguments' => [
@@ -886,7 +903,6 @@ return [
                     'monolog.logger.mautic',
                     'mautic.helper.core_parameters',
                     'mautic.http.client',
-                    'translator',
                 ],
             ],
             'mautic.helper.url' => [
@@ -901,8 +917,6 @@ return [
                 'class'     => \Mautic\CoreBundle\Helper\ExportHelper::class,
                 'arguments' => [
                     'translator',
-                    'mautic.helper.core_parameters',
-                    'mautic.helper.file_path_resolver',
                 ],
             ],
             'mautic.helper.composer' => [
@@ -1337,7 +1351,8 @@ return [
         'ip_lookup_auth'                  => '',
         'ip_lookup_config'                => [],
         'ip_lookup_create_organization'   => false,
-        'transifex_api_token'             => '',
+        'transifex_username'              => '',
+        'transifex_password'              => '',
         'update_stability'                => 'stable',
         'cookie_path'                     => '/',
         'cookie_domain'                   => '',

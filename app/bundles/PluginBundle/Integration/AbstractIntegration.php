@@ -38,7 +38,6 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormBuilder;
-use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\Session;
@@ -278,7 +277,7 @@ abstract class AbstractIntegration implements UnifiedIntegrationInterface
      * Example:
      *  'cloud_storage' => 'mautic.integration.form.features.cloud_storage.tooltip'
      *
-     * @return array<string, string>
+     * @return array
      */
     public function getSupportedFeatureTooltips()
     {
@@ -830,13 +829,8 @@ abstract class AbstractIntegration implements UnifiedIntegrationInterface
                     ]);
                     break;
             }
-        } catch (\GuzzleHttp\Exception\RequestException $exception) {
-            return [
-                'error' => [
-                    'message' => $exception->getResponse()->getBody()->getContents(),
-                    'code'    => $exception->getCode(),
-                ],
-            ];
+        } catch (\Exception $exception) {
+            return ['error' => ['message' => $exception->getMessage(), 'code' => $exception->getCode()]];
         }
         if (empty($settings['ignore_event_dispatch'])) {
             $event->setResponse($result);
@@ -2119,8 +2113,8 @@ abstract class AbstractIntegration implements UnifiedIntegrationInterface
     }
 
     /**
-     * @param FormBuilderInterface $builder
-     * @param array<mixed>         $options
+     * @param FormBuilder $builder
+     * @param array       $options
      */
     public function modifyForm($builder, $options)
     {

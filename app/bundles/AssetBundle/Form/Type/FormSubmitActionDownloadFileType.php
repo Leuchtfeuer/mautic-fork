@@ -38,9 +38,8 @@ class FormSubmitActionDownloadFileType extends AbstractType
                 'bundle'        => 'asset',
                 'return_entity' => false,
                 'attr'          => [
-                    'class'        => 'form-control',
-                    'tooltip'      => 'mautic.asset.form.submit.latest.category_descr',
-                    'data-show-on' => '{"formaction_properties_asset":""}',
+                    'class'   => 'form-control',
+                    'tooltip' => 'mautic.asset.form.submit.latest.category_descr',
                 ],
             ]
         );

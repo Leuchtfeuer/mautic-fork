@@ -21,7 +21,8 @@ $aggregatorCount      = count($aggregatorOrder);
 $groupBy              = $report->getGroupBy();
 $groupByCount         = count($groupBy);
 $startCount           = ($totalResults > $limit) ? ($reportPage * $limit) - $limit + 1 : 1;
-$getTotal             = function ($a, $f, $t, $allrows, $ac) {
+function getTotal($a, $f, $t, $allrows, $ac)
+{
     switch ($f) {
         case 'COUNT':
         case 'SUM':
@@ -35,7 +36,7 @@ $getTotal             = function ($a, $f, $t, $allrows, $ac) {
         default:
             return (int) $t;
     }
-};
+}
 
 $graphContent = $view->render(
     'MauticReportBundle:Report:details_data_graphs.html.php',
@@ -120,28 +121,22 @@ $graphContent = $view->render(
                                                 $cellType = $columns[$key]['type'];
                                                 $cellVal  = $row[$columns[$key]['alias']];
 
-                                                // If field is date or datetime, and is formatted with string
-                                                // which does not convert back to date simply print the formatted string.
-                                                if (in_array($cellType, ['date', 'datetime']) && !strtotime($cellVal)) {
-                                                    echo $cellVal;
-                                                } else {
-                                                    // For grouping by datetime fields, so we don't get the timestamp on them
-                                                    if ('datetime' === $cellType && 10 === strlen($cellVal)) {
-                                                        $cellType = 'date';
-                                                    }
-                                                    if ('' !== $cellVal && !is_null($cellVal)) {
-                                                        switch ($cellType) {
-                                                            case 'datetime':
-                                                                echo $view['date']->toFullConcat($cellVal, 'UTC');
-                                                                break;
-                                                            case 'date':
-                                                                echo $view['date']->toShort($cellVal, 'UTC');
-                                                                break;
-                                                            default:
-                                                                echo $view['formatter']->_($cellVal, $cellType);
-                                                                break;
-                                                        }
-                                                    }
+                                                // For grouping by datetime fields, so we don't get the timestamp on them
+                                                if ('datetime' === $cellType && 10 === strlen($cellVal)) {
+                                                    $cellType = 'date';
+                                                }
+                                                ?>
+                                                <?php
+                                                switch ($cellType) {
+                                                    case 'datetime':
+                                                        echo $view['date']->toFullConcat($cellVal, 'UTC');
+                                                        break;
+                                                    case 'date':
+                                                        echo $view['date']->toShort($cellVal, 'UTC');
+                                                        break;
+                                                    default:
+                                                        echo $view['formatter']->_($cellVal, $cellType);
+                                                        break;
                                                 }
                                                 ?>
                                                 <?php if ($closeLink): ?></a><?php endif; ?>
@@ -157,7 +152,7 @@ $graphContent = $view->render(
                                             <?php
                                             if (isset($row[$aggregator['function'].' '.$aggregator['column']])) {
                                                 echo $view['formatter']->_($row[$aggregator['function'].' '.$aggregator['column']], 'text');
-                                                $total[$index] = $getTotal($row[$aggregator['function'].' '.$aggregator['column']], $aggregator['function'], (isset($total[$index])) ? $total[$index] : 0, $dataCount, $avgCounter);
+                                                $total[$index] = getTotal($row[$aggregator['function'].' '.$aggregator['column']], $aggregator['function'], (isset($total[$index])) ? $total[$index] : 0, $dataCount, $avgCounter);
                                             }
                                             ?>
                                         </td>

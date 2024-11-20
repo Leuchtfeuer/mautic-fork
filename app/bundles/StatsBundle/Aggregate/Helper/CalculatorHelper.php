@@ -206,7 +206,7 @@ class CalculatorHelper
             return;
         }
 
-        $yesterday = (new DateTime(self::getDayDateString($yesterday)))->modify('-1 day');
+        $yesterday = new DateTime(self::getDayDateString($yesterday));
         $today     = new DateTime(self::getDayDateString($today));
 
         while ($yesterday < $today) {

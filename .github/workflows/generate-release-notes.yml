@@ -23,7 +23,7 @@ jobs:
         java -jar ./github-changelog-generator.jar --spring.config.location="./release-notes.yml" ${{ github.event.inputs.milestone }} mautic-changelog.txt || true
     
     - name: Upload mautic-changelog.txt artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v2
       with:
         name: mautic-changelog.txt
         path: ./mautic-changelog.txt

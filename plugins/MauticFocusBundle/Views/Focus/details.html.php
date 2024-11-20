@@ -132,11 +132,7 @@ $view['slots']->set(
             <!-- start: tab-content -->
                 <div class="tab-content pa-md">
                     <div class="tab-pane active bdr-w-0" id="clicks-container">
-                        <?php echo $view->render('MauticPageBundle:Trackable:click_counts.html.php', [
-                                'trackables' => $trackables,
-                                'entity'     => $item,
-                                'channel'    => 'focus',
-                        ]); ?>
+                        <?php echo $view->render('MauticPageBundle:Trackable:click_counts.html.php', ['trackables' => $trackables]); ?>
                     </div>
                 </div>
                 <!-- end: tab-content -->

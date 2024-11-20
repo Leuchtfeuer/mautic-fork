@@ -288,20 +288,4 @@ class ContactSegmentFilterCrateTest extends \PHPUnit\Framework\TestCase
             ['notification'],
         ];
     }
-
-    /**
-     * @covers \Mautic\LeadBundle\Segment\ContactSegmentFilterCrate
-     */
-    public function testBehaviorsTypeFilter(): void
-    {
-        $filter = [
-            'object'     => 'behaviors',
-        ];
-
-        $contactSegmentFilterCrate = new ContactSegmentFilterCrate($filter);
-
-        $this->assertFalse($contactSegmentFilterCrate->isContactType());
-        $this->assertFalse($contactSegmentFilterCrate->isCompanyType());
-        $this->assertTrue($contactSegmentFilterCrate->isBehaviorsType());
-    }
 }

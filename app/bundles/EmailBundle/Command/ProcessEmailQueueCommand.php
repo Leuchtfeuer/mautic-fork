@@ -64,12 +64,12 @@ EOT
         $options     = $input->getOptions();
         $env         = (!empty($options['env'])) ? $options['env'] : 'dev';
         $skipClear   = $input->getOption('do-not-clear');
-        $quiet       = (bool) $input->getOption('quiet');
+        $quiet       = $input->hasOption('quiet') ? $input->getOption('quiet') : false;
         $timeout     = $input->getOption('clear-timeout');
         $queueMode   = $this->parametersHelper->get('mailer_spool_type');
         $lockName    = $input->getOption('lock-name') ?? '';
 
-        if ('file' !== $queueMode) {
+        if ('file' != $queueMode) {
             $output->writeln('Mautic is not set to queue email.');
 
             return 0;
@@ -149,7 +149,7 @@ EOT
         }
 
         //now process new emails
-        if ($quiet) {
+        if (!$quiet) {
             $output->setVerbosity(OutputInterface::VERBOSITY_QUIET);
         }
 

@@ -31,9 +31,9 @@ class AjaxController extends CommonAjaxController
      */
     protected function getIntegrationFieldsAction(Request $request)
     {
-        $integration = $request->query->get('integration');
-        $settings    = $request->query->get('settings');
-        $page        = $request->query->get('page');
+        $integration = $request->request->get('integration');
+        $settings    = $request->request->get('settings');
+        $page        = $request->request->get('page');
 
         $dataArray = ['success' => 0];
 
@@ -123,8 +123,8 @@ class AjaxController extends CommonAjaxController
      */
     protected function getIntegrationConfigAction(Request $request)
     {
-        $integration = $request->query->get('integration');
-        $settings    = $request->query->get('settings');
+        $integration = $request->request->get('integration');
+        $settings    = $request->request->get('settings');
         $dataArray   = ['success' => 0];
 
         if (!empty($integration) && !empty($settings)) {
@@ -180,9 +180,9 @@ class AjaxController extends CommonAjaxController
 
     protected function getIntegrationCampaignStatusAction(Request $request)
     {
-        $integration = $request->query->get('integration');
-        $campaign    = $request->query->get('campaign');
-        $settings    = $request->query->get('settings');
+        $integration = $request->request->get('integration');
+        $campaign    = $request->request->get('campaign');
+        $settings    = $request->request->get('settings');
         $dataArray   = ['success' => 0];
         $statusData  = [];
         if (!empty($integration) && !empty($campaign)) {
@@ -240,7 +240,7 @@ class AjaxController extends CommonAjaxController
      */
     protected function getIntegrationCampaignsAction(Request $request)
     {
-        $integration = $request->query->get('integration');
+        $integration = $request->request->get('integration');
         $dataArray   = ['success' => 0];
 
         if (!empty($integration)) {

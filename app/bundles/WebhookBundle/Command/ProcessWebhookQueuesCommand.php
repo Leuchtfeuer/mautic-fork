@@ -65,7 +65,7 @@ class ProcessWebhookQueuesCommand extends ContainerAwareCommand
         if (!count($webhooks)) {
             $output->writeln('<error>No published webhooks found. Try again later.</error>');
 
-            return 1;
+            return 0;
         }
 
         $output->writeLn('<info>Processing Webhooks</info>');

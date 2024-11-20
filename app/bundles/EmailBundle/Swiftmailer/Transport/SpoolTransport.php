@@ -53,8 +53,6 @@ class SpoolTransport extends \Swift_Transport_SpoolTransport
             $this->eventDispatcher->dispatchEvent($evt, 'sendPerformed');
         }
 
-        $message->generateId(); //Make sure a new Message ID is used
-
         return $count;
     }
 

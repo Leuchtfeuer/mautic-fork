@@ -279,8 +279,7 @@ Mautic.leadlistOnLoad = function(container, response) {
                     elem.html(response.html);
                 },
                 false,
-                true,
-                "GET"
+                true
             );
         });
     }
@@ -484,27 +483,24 @@ Mautic.reorderSegmentFilters = function() {
             }
 
             if (name) {
-                if (isProperties) {
-                    var newName = prefix + '[filters][' + counter + '][properties][' + suffix + ']';
-                    if (name.slice(-2) === '[]') {
-                        newName += '[]';
-                    }
-
-                    mQuery(this).attr('name', newName);
-                    mQuery(this).attr('id', prefix + '_filters_' + counter + '_properties_' + suffix);
-                } else {
-                    var newName = prefix + '[filters][' + counter + '][' + suffix + ']';
-                    if (name.slice(-2) === '[]') {
-                        newName += '[]';
-                    }
-
-                    mQuery(this).attr('name', newName);
-                    mQuery(this).attr('id', prefix + '_filters_' + counter + '_' + suffix);
+                if (isProperties){
+                    var newName    = prefix + '[filters][' + counter + '][properties][' + suffix + ']';
+                    var properties = 'properties_';
                 }
-            } else {
+                else {
+                    var newName = prefix + '[filters][' + counter + '][' + suffix + ']';
+                    var properties = '';
+                }
+                if (name.slice(-2) === '[]') {
+                    newName += '[]';
+                }
+
                 mQuery(this).attr('name', newName);
-                mQuery(this).attr('id', prefix + '_filters_'+counter+'_'+suffix);
+                mQuery(this).attr('id', prefix + '_filters_' + counter + '_' + properties + suffix);
             }
+
+            mQuery(this).attr('name', newName);
+            mQuery(this).attr('id', prefix + '_filters_'+counter+'_'+suffix);
 
             // Destroy the chosen and recreate
             if (mQuery(this).is('select') && suffix == "filter") {
@@ -1123,7 +1119,7 @@ Mautic.reloadLeadImportProgress = function() {
                     mQuery('.progress-bar-import span.sr-only').html(response.percent + '%');
                 }
             }
-        }, false, false, "GET");
+        });
 
         // Initiate import
         mQuery.ajax({
@@ -1275,7 +1271,7 @@ Mautic.getLeadEmailContent = function (el) {
         mQuery('#'+idPrefix+'subject').val(response.subject);
 
         Mautic.removeLabelLoadingIndicator();
-    }, false, false, "GET");
+    });
 };
 
 Mautic.updateLeadTags = function () {
@@ -1472,7 +1468,7 @@ Mautic.initUniqueIdentifierFields = function() {
                 } else {
                     input.parent().find('div.exists-warning').remove();
                 }
-            }, false, false, "GET");
+            });
         });
     }
 };

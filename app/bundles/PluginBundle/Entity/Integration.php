@@ -17,7 +17,7 @@ class Integration extends CommonEntity
     private $id;
 
     /**
-     * @var Plugin|null
+     * @var Plugin
      */
     private $plugin;
 
@@ -93,7 +93,7 @@ class Integration extends CommonEntity
     }
 
     /**
-     * @return Plugin|null
+     * @return Plugin
      */
     public function getPlugin()
     {
@@ -154,11 +154,6 @@ class Integration extends CommonEntity
         $this->isPublished = $isPublished;
 
         return $this;
-    }
-
-    public function isPublished(): bool
-    {
-        return $this->isPublished;
     }
 
     /**

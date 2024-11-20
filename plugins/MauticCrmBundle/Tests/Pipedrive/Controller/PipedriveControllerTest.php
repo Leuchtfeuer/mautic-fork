@@ -2,7 +2,6 @@
 
 namespace MauticPlugin\MauticCrmBundle\Tests\Pipedrive\Controller;
 
-use Mautic\CoreBundle\Test\IsolatedTestTrait;
 use MauticPlugin\MauticCrmBundle\Tests\Pipedrive\PipedriveTest;
 
 /**
@@ -11,8 +10,6 @@ use MauticPlugin\MauticCrmBundle\Tests\Pipedrive\PipedriveTest;
  */
 class PipedriveControllerTest extends PipedriveTest
 {
-    use IsolatedTestTrait;
-
     public function testWithoutIntegration()
     {
         $this->makeRequest('POST', '');

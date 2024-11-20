@@ -8,6 +8,7 @@ use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
+use Symfony\Component\Form\FormInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints\NotBlank;
 
@@ -35,11 +36,10 @@ class IntegrationsListType extends AbstractType
             $settings = $object->getIntegrationSettings();
 
             if ($settings->isPublished()) {
-                $pluginName = $settings->getPlugin()->getName();
-                if (!isset($integrations[$pluginName])) {
-                    $integrations[$pluginName] = [];
+                if (!isset($integrations[$settings->getPlugin()->getName()])) {
+                    $integrations[$settings->getPlugin()->getName()] = [];
                 }
-                $integrations[$pluginName][$object->getDisplayName()] = $object->getName();
+                $integrations[$settings->getPlugin()->getName()][$object->getDisplayName()] = $object->getName();
             }
         }
 
@@ -63,12 +63,10 @@ class IntegrationsListType extends AbstractType
                         ['message' => 'mautic.core.value.required']
                     ),
                 ],
-            ]
+                ]
         );
 
-        $formModifier = function (FormEvent $event) use ($integrationObjects) {
-            $data            = $event->getData();
-            $form            = $event->getForm();
+        $formModifier = function (FormInterface $form, $data) use ($integrationObjects) {
             $statusChoices   = [];
             $campaignChoices = [];
 
@@ -101,7 +99,7 @@ class IntegrationsListType extends AbstractType
                     'attr'  => [
                         'class' => 'integration-config-container',
                     ],
-                    'integration' => isset($data['integration'], $integrationObjects[$data['integration']]) ? $integrationObjects[$data['integration']] : null,
+                    'integration' => (isset($integrationObjects[$data['integration']])) ? $integrationObjects[$data['integration']] : null,
                     'campaigns'   => $campaignChoices,
                     'data'        => (isset($data['config'])) ? $data['config'] : [],
                 ]
@@ -122,9 +120,21 @@ class IntegrationsListType extends AbstractType
             );
         };
 
-        $builder->addEventListener(FormEvents::PRE_SET_DATA, $formModifier);
+        $builder->addEventListener(
+            FormEvents::PRE_SET_DATA,
+            function (FormEvent $event) use ($formModifier) {
+                $data = $event->getData();
+                $formModifier($event->getForm(), $data);
+            }
+        );
 
-        $builder->addEventListener(FormEvents::PRE_SUBMIT, $formModifier);
+        $builder->addEventListener(
+            FormEvents::PRE_SUBMIT,
+            function (FormEvent $event) use ($formModifier) {
+                $data = $event->getData();
+                $formModifier($event->getForm(), $data);
+            }
+        );
     }
 
     /**

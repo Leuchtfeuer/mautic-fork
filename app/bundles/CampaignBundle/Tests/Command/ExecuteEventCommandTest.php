@@ -38,8 +38,8 @@ class ExecuteEventCommandTest extends AbstractCampaignCommand
         // Pop off the last so we can test that only the two given are executed
         $lastId = array_pop($logIds);
 
-        // Wait 6 seconds to go past scheduled time
-        sleep(6);
+        // Wait 20 seconds to go past scheduled time
+        sleep(20);
 
         $this->runCommand('mautic:campaigns:execute', ['--scheduled-log-ids' => implode(',', $logIds)]);
 

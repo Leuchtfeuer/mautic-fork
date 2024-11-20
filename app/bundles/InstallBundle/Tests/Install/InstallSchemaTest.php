@@ -7,22 +7,36 @@ use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Schema\Table;
 use Mautic\InstallBundle\Helper\SchemaHelper;
 use PHPUnit\Framework\Assert;
+use Symfony\Component\Dotenv\Dotenv;
 
 class InstallSchemaTest extends \PHPUnit\Framework\TestCase
 {
-    private Connection $connection;
+    /**
+     * @var Connection
+     */
+    protected $connection;
 
     /**
      * @var array<string, mixed>
      */
-    private array $dbParams;
+    protected $dbParams;
 
-    private string $indexTableName;
+    /**
+     * @var string
+     */
+    protected $indexTableName;
 
     public function setUp(): void
     {
         parent::setUp();
 
+        // Load environment variables with same logic as the config_test.php
+        $env     = new Dotenv();
+        $root    = __DIR__.'/../../../../../';
+        $envFile = file_exists($root.'.env') ? $root.'.env' : $root.'.env.dist';
+        defined('MAUTIC_TABLE_PREFIX') || define('MAUTIC_TABLE_PREFIX', getenv('MAUTIC_DB_PREFIX') ?: '');
+
+        $env->load($envFile);
         $this->dbParams = [
             'driver'        => getenv('DB_DRIVER') ?: 'pdo_mysql',
             'host'          => getenv('DB_HOST'),

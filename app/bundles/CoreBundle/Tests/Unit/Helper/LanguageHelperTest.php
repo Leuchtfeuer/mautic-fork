@@ -8,47 +8,46 @@ use Mautic\CoreBundle\Helper\CoreParametersHelper;
 use Mautic\CoreBundle\Helper\LanguageHelper;
 use Mautic\CoreBundle\Helper\PathsHelper;
 use Monolog\Logger;
-use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Contracts\Translation\TranslatorInterface;
 
 class LanguageHelperTest extends TestCase
 {
     /**
-     * @var PathsHelper&MockObject
+     * @var PathsHelper|\PHPUnit\Framework\MockObject\MockObject
      */
     private $pathsHelper;
 
     /**
-     * @var Logger&MockObject
+     * @var Logger|\PHPUnit\Framework\MockObject\MockObject
      */
     private $logger;
 
     /**
-     * @var CoreParametersHelper&MockObject
+     * @var CoreParametersHelper|\PHPUnit\Framework\MockObject\MockObject
      */
     private $coreParametersHelper;
 
     /**
-     * @var Client&MockObject
+     * @var Client|\PHPUnit\Framework\MockObject\MockObject
      */
     private $client;
 
     /**
-     * @var TranslatorInterface&MockObject
+     * @var string
      */
-    private $translator;
+    private $translationsPath;
 
-    private string $translationsPath;
-    private string $tmpPath;
+    /**
+     * @var string
+     */
+    private $tmpPath;
 
     protected function setUp(): void
     {
         $this->logger               = $this->createMock(Logger::class);
         $this->coreParametersHelper = $this->createMock(CoreParametersHelper::class);
         $this->client               = $this->createMock(Client::class);
-        $this->translator           = $this->createMock(TranslatorInterface::class);
 
         $this->translationsPath = __DIR__.'/resource/language';
         $this->tmpPath          = $this->translationsPath.'/tmp';
@@ -68,7 +67,7 @@ class LanguageHelperTest extends TestCase
             );
     }
 
-    public function testLanguageIsInstalled(): void
+    public function testLanguageIsInstalled()
     {
         $filesystem = new Filesystem();
 
@@ -85,7 +84,7 @@ class LanguageHelperTest extends TestCase
         $filesystem->remove($this->translationsPath.'/translations/es');
     }
 
-    public function testLanguageListIsFetchedAndWritten(): void
+    public function testLanguageListIsFetchedAndWritten()
     {
         $langFile = $this->tmpPath.'/../languageList.txt';
         $this->coreParametersHelper->method('get')
@@ -95,8 +94,8 @@ class LanguageHelperTest extends TestCase
                 'https://languages.test'
             );
 
-        $languages = ['languages' => [['name' => 'Spanish', 'locale' => 'es']]];
-        $response  = new Response(200, [], json_encode($languages));
+        $languages      = ['languages' => [['name'=>'Spanish', 'locale'=>'es']]];
+        $response       = new Response(200, [], json_encode($languages));
 
         $this->client->expects($this->once())
             ->method('get')
@@ -115,7 +114,7 @@ class LanguageHelperTest extends TestCase
         @unlink($langFile);
     }
 
-    public function testLanguageIsFetched(): void
+    public function testLanguageIsFetched()
     {
         $languages = ['languages' => ['es' => []]];
         $langFile  = $this->tmpPath.'/../languageList.txt';
@@ -140,14 +139,17 @@ class LanguageHelperTest extends TestCase
         @unlink($this->tmpPath.'/es.zip');
     }
 
-    public function testSupportedLanguagesAreReturned(): void
+    public function testSupportedLanguagesAreReturned()
     {
         $helper = $this->getHelper();
         $this->assertEquals(['en_US' => 'English - United States'], $helper->getSupportedLanguages());
     }
 
-    private function getHelper(): LanguageHelper
+    /**
+     * @return LanguageHelper
+     */
+    private function getHelper()
     {
-        return new LanguageHelper($this->pathsHelper, $this->logger, $this->coreParametersHelper, $this->client, $this->translator);
+        return new LanguageHelper($this->pathsHelper, $this->logger, $this->coreParametersHelper, $this->client);
     }
 }

@@ -450,7 +450,7 @@ class PublicController extends CommonFormController
         }
 
         // Ensure the URL does not have encoded ampersands
-        $url = UrlHelper::decodeAmpersands($redirect->getUrl());
+        $url = str_replace('&amp;', '&', $redirect->getUrl());
 
         // Get query string
         $query = $this->request->query->all();

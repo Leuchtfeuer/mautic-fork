@@ -1,13 +1,9 @@
 <?php
 
-declare(strict_types=1);
-
 namespace MauticPlugin\MauticCrmBundle\Tests\Pipedrive\Import;
 
-use GuzzleHttp\Psr7\Response as GuzzleResponse;
 use Mautic\LeadBundle\Entity\Lead;
 use MauticPlugin\MauticCrmBundle\Tests\Pipedrive\PipedriveTest;
-use Symfony\Component\HttpFoundation\Response;
 
 class LeadTest extends PipedriveTest
 {
@@ -132,12 +128,6 @@ class LeadTest extends PipedriveTest
         $newCompanyName    = 'New Company Name';
         $newCompanyAddress = 'Madrid, Spain';
 
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/Post/persons/find'))); // find company by name
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/Post/organizations'))); // create company
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/Post/persons/find'))); // find person by email
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/Post/persons'))); // create person
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/personFields'))); // get fields
-
         $this->installPipedriveIntegration(
             true,
             $this->features,
@@ -174,12 +164,6 @@ class LeadTest extends PipedriveTest
     public function testRemoveLeadCompany()
     {
         $companyModel = self::$container->get('mautic.lead.model.company');
-
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/Post/persons/find'))); // find company by name
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/Post/organizations'))); // create company
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/Post/persons/find'))); // find person by email
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/Post/persons'))); // create person
-        $this->mockHandler->append(new GuzzleResponse(Response::HTTP_OK, [], self::getData('Api/personFields'))); // get fields
 
         $this->installPipedriveIntegration(
             true,

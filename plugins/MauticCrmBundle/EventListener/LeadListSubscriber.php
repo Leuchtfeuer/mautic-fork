@@ -5,7 +5,6 @@ namespace MauticPlugin\MauticCrmBundle\EventListener;
 use Mautic\LeadBundle\Entity\LeadList;
 use Mautic\LeadBundle\Event\LeadListFiltersChoicesEvent;
 use Mautic\LeadBundle\Event\ListPreProcessListEvent;
-use Mautic\LeadBundle\Helper\FormFieldHelper;
 use Mautic\LeadBundle\LeadEvents;
 use Mautic\LeadBundle\Model\ListModel;
 use Mautic\PluginBundle\Helper\IntegrationHelper;
@@ -72,7 +71,7 @@ class LeadListSubscriber implements EventSubscriberInterface
                             }
                         );
                     }
-                    $integrationChoices                      = FormFieldHelper::parseListForChoices($integrationChoices);
+
                     $choices[$integration->getDisplayName()] = $integrationChoices;
                 }
             }

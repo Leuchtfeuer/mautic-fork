@@ -272,9 +272,6 @@ class EmailController extends FormController
         $action          = $this->generateUrl('mautic_email_action', ['objectAction' => 'view', 'objectId' => $objectId]);
         $dateRangeForm   = $this->get('form.factory')->create(DateRangeType::class, $dateRangeValues, ['action' => $action]);
 
-        // Get the stats filter from the querystring.
-        $statsFilter = $this->request->get('stats', '');
-
         if (null === $email) {
             //set the return URL
             $returnUrl = $this->generateUrl('mautic_email_index', ['page' => $page]);
@@ -426,7 +423,6 @@ class EmailController extends FormController
                         ]
                     )->getContent(),
                     'dateRangeForm' => $dateRangeForm->createView(),
-                    'statsFilter'   => $statsFilter,
                 ],
                 'contentTemplate' => 'MauticEmailBundle:Email:details.html.php',
                 'passthroughVars' => [

@@ -1,20 +1,16 @@
 <?php
 
-declare(strict_types=1);
-
 namespace MauticPlugin\MauticCrmBundle\Tests\Pipedrive\Command;
 
-use GuzzleHttp\Psr7\Response;
 use Mautic\PluginBundle\Entity\IntegrationEntity;
 use MauticPlugin\MauticCrmBundle\Tests\Pipedrive\PipedriveTest;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class PushDataToPipedriveCommandTest extends PipedriveTest
 {
-    public function testCommandWithDisabledIntegration(): void
+    public function testCommandWithdisableIntegration()
     {
         $this->installPipedriveIntegration(false,
             [
@@ -46,11 +42,8 @@ class PushDataToPipedriveCommandTest extends PipedriveTest
         $this->assertEquals(count($integrationEntities), 0);
     }
 
-    public function testCommandWithDisabledCompanyFeature(): void
+    public function testCommandWithDisabledComanyFeature()
     {
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Post/persons/find')));
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Post/persons')));
-
         $this->installPipedriveIntegration(true,
             [
                 'leadFields' => [
@@ -71,6 +64,7 @@ class PushDataToPipedriveCommandTest extends PipedriveTest
 
         $this->createLead();
         $this->createCompany();
+
         $this->executeCommand();
 
         $integrationEntities = $this->em->getRepository(IntegrationEntity::class)->findAll();
@@ -78,12 +72,8 @@ class PushDataToPipedriveCommandTest extends PipedriveTest
         $this->assertEquals(count($integrationEntities), 1);
     }
 
-    public function testCommandWithFeatureEnabled(): void
+    public function testCommand()
     {
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Post/organizations')));
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Post/persons/find')));
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Post/persons')));
-
         $this->installPipedriveIntegration(true,
             [
                 'objects' => [

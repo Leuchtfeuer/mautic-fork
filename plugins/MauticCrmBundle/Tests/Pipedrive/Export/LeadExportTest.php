@@ -2,7 +2,6 @@
 
 namespace MauticPlugin\MauticCrmBundle\Tests\Pipedrive\Export;
 
-use GuzzleHttp\Psr7\Response;
 use Mautic\LeadBundle\Entity\Lead;
 use Mautic\PluginBundle\Entity\IntegrationEntity;
 use Mautic\PointBundle\Entity\Trigger;
@@ -10,7 +9,6 @@ use Mautic\PointBundle\Entity\TriggerEvent;
 use MauticPlugin\MauticCrmBundle\Integration\PipedriveIntegration;
 use MauticPlugin\MauticCrmBundle\Tests\Pipedrive\PipedriveTest;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class LeadExportTest extends PipedriveTest
 {
@@ -23,13 +21,9 @@ class LeadExportTest extends PipedriveTest
         ],
     ];
 
-    public function testAddPersonViaPointTrigger(): void
+    public function testAddPersonViaPointTrigger()
     {
         $iterations = 2;
-
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Post/persons/find')));
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Post/persons')));
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Post/persons/find')));
 
         $this->installPipedriveIntegration(
             true,
@@ -76,7 +70,7 @@ class LeadExportTest extends PipedriveTest
         $this->assertEquals($integrationEntity->getIntegration(), PipedriveIntegration::INTEGRATION_NAME);
     }
 
-    public function testUpdatePersonWhenFeatureEnalbed(): void
+    public function testUpdatePerson()
     {
         $this->installPipedriveIntegration(
             true,
@@ -87,9 +81,6 @@ class LeadExportTest extends PipedriveTest
             ]
         );
         $lead = $this->createLead();
-
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons/find')));
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons')));
 
         $crawler     = $this->client->request(Request::METHOD_GET, '/s/contacts/edit/'.$lead->getId());
         $formCrawler = $crawler->filter('form[name=lead]');
@@ -105,28 +96,21 @@ class LeadExportTest extends PipedriveTest
         ]);
         $this->client->submit($form);
 
-        $this->assertStringEndsWith('Api/Put/persons', $this->mockHandler->getLastRequest()->getUri()->getPath());
-        $this->assertEquals(
-            'first_name=Test&last_name=User&email=test%40test.pl&phone=123456789&owner_id=0&name=Test+User',
-            $this->mockHandler->getLastRequest()->getBody()->__toString()
-        );
+        $requests = $GLOBALS['requests'];
+        $request  = $requests['POST/Api/Put/persons'];
+
+        $this->assertSame(count($request), 1);
+        $this->assertEquals($request[0]['form_params']['first_name'], 'Test');
+        $this->assertEquals($request[0]['form_params']['last_name'], 'User');
+        $this->assertEquals($request[0]['form_params']['email'], 'test@test.pl');
+        $this->assertEquals($request[0]['form_params']['phone'], '123456789');
     }
 
-    public function testUpdatePersonWithCompanyWhenFeatureIsDisabled(): void
+    public function testUpdatePersonWithCompanyWhenFeatureIsDisabled()
     {
         $integrationId         = 97;
         $integrationCompanyId  = 66;
         $integrationCompany2Id = 77;
-
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons/find'))); // find by email
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons'))); // create person
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons'))); // update person
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons'))); // update person
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons'))); // update person
-
-        // These 2 more requests happen. Should be investigated.
-        // $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons/find'))); // find by email
-        // $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons'))); // create person
 
         $this->installPipedriveIntegration(
             true,
@@ -150,28 +134,29 @@ class LeadExportTest extends PipedriveTest
 
         $form = $formCrawler->form();
         $form->setValues([
-            'lead[firstname]' => 'Test',
-            'lead[lastname]'  => 'User',
-            'lead[email]'     => 'test@test.pl',
-            'lead[points]'    => 0,
-            'lead[phone]'     => 123456789,
-            'lead[companies]' => [],
+            'lead[firstname]'     => 'Test',
+            'lead[lastname]'      => 'User',
+            'lead[email]'         => 'test@test.pl',
+            'lead[points]'        => 0,
+            'lead[phone]'         => 123456789,
+            'lead[companies]'     => [],
         ]);
         $this->client->submit($form);
 
-        $this->assertStringEndsWith('Api/Put/persons/'.$integrationId, $this->mockHandler->getLastRequest()->getUri()->getPath());
-        $this->assertEquals(
-            'first_name=Test&last_name=User&email=test%40test.pl&phone=123456789&owner_id=0&name=Test+User',
-            $this->mockHandler->getLastRequest()->getBody()->__toString()
-        );
+        $requests = $GLOBALS['requests'];
+        $request  = $requests['PUT/Api/Put/persons/'.$integrationId][1];
+
+        $this->assertSame(count($requests), 3);
+        $this->assertEquals($request['form_params']['first_name'], 'Test');
+        $this->assertEquals($request['form_params']['last_name'], 'User');
+        $this->assertEquals($request['form_params']['email'], 'test@test.pl');
+        $this->assertEquals($request['form_params']['phone'], '123456789');
+        $this->assertEquals(isset($request['form_params']['org_id']), false);
     }
 
-    public function testUpdatePersonWithOwner(): void
+    public function testUpdatePersonWithOwner()
     {
         $pipedriveOwnerId = 55;
-
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons/find'))); // find by email
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Put/persons'))); // create person
 
         $this->installPipedriveIntegration(
             true,
@@ -201,19 +186,21 @@ class LeadExportTest extends PipedriveTest
         ]);
         $this->client->submit($form);
 
-        $this->assertStringEndsWith('Api/Put/persons', $this->mockHandler->getLastRequest()->getUri()->getPath());
-        $this->assertEquals(
-            'first_name=Test&last_name=User&email=test%40test.pl&phone=123456789&owner_id='.$pipedriveOwnerId.'&name=Test+User',
-            $this->mockHandler->getLastRequest()->getBody()->__toString()
-        );
+        $requests = $GLOBALS['requests'];
+        $request  = $requests['POST/Api/Put/persons'][0];
+
+        $this->assertSame(count($requests['POST/Api/Put/persons']), 1);
+        $this->assertEquals($request['form_params']['first_name'], 'Test');
+        $this->assertEquals($request['form_params']['last_name'], 'User');
+        $this->assertEquals($request['form_params']['email'], 'test@test.pl');
+        $this->assertEquals($request['form_params']['phone'], '123456789');
+        $this->assertEquals($request['form_params']['owner_id'], $pipedriveOwnerId);
     }
 
-    public function testDeletePerson(): void
+    public function testDeletePerson()
     {
         $integrationId    = 99;
         $pipedriveOwnerId = 55;
-
-        $this->mockHandler->append(new Response(SymfonyResponse::HTTP_OK, [], self::getData('Api/Delete/persons')));
 
         $this->installPipedriveIntegration(
             true,
@@ -237,10 +224,12 @@ class LeadExportTest extends PipedriveTest
 
         $integrationEntities = $this->em->getRepository(IntegrationEntity::class)->findAll();
         $leads               = $this->em->getRepository(Lead::class)->findAll();
+        $requests            = $GLOBALS['requests'];
+        $request             = $requests['DELETE/Api/Delete/persons/'.$integrationId][0];
 
-        $this->assertStringEndsWith('Api/Delete/persons/'.$integrationId, $this->mockHandler->getLastRequest()->getUri()->getPath());
-
+        $this->assertSame(count($requests), 1);
         $this->assertSame(count($integrationEntities), 0);
         $this->assertSame(count($leads), 0);
+        $this->assertEmpty($request['form_params']);
     }
 }

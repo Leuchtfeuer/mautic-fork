@@ -31,11 +31,8 @@ class FileManagerController extends AjaxController
         /** @var FileManager $fileManager */
         $fileManager = $this->get('grapesjsbuilder.helper.filemanager');
 
-        $fileName = basename($this->request->get('filename'));
+        $fileName = $this->request->get('filename');
 
-        if (!exif_imagetype($fileManager->getCompleteFilePath($fileName))) {
-            return $this->sendJsonResponse(['success'=> false]);
-        }
         $fileManager->deleteFile($fileName);
 
         return $this->sendJsonResponse(['success'=> true]);

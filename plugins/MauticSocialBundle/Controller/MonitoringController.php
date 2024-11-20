@@ -17,10 +17,6 @@ class MonitoringController extends FormController
      */
     public function indexAction($page = 1)
     {
-        if (!$this->get('mautic.security')->isGranted('mauticSocial:monitoring:view')) {
-            return $this->accessDenied();
-        }
-
         $session = $this->get('session');
 
         $this->setListFilters();

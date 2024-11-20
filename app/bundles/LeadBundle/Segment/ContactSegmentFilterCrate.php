@@ -4,9 +4,8 @@ namespace Mautic\LeadBundle\Segment;
 
 class ContactSegmentFilterCrate
 {
-    const CONTACT_OBJECT   = 'lead';
-    const COMPANY_OBJECT   = 'company';
-    const BEHAVIORS_OBJECT = 'behaviors';
+    const CONTACT_OBJECT = 'lead';
+    const COMPANY_OBJECT = 'company';
 
     /**
      * @var string|null
@@ -89,11 +88,6 @@ class ContactSegmentFilterCrate
     public function isCompanyType()
     {
         return self::COMPANY_OBJECT === $this->object;
-    }
-
-    public function isBehaviorsType(): bool
-    {
-        return self::BEHAVIORS_OBJECT === $this->object;
     }
 
     /**

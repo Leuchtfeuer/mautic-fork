@@ -88,7 +88,7 @@ class IntegrationHelper
      * @param int|null     $pluginFilter
      * @param bool|false   $publishedOnly
      *
-     * @return array<AbstractIntegration>
+     * @return mixed
      *
      * @throws \Doctrine\ORM\ORMException
      */

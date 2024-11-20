@@ -497,8 +497,7 @@ class CampaignSubscriber implements EventSubscriberInterface
                     $lead->getId(),
                     $field,
                     $fieldValue,
-                    $operators[$event->getConfig()['operator']]['expr'],
-                    $fields[$field]['type'] ?? null
+                    $operators[$event->getConfig()['operator']]['expr']
                 );
             }
         }

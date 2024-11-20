@@ -207,33 +207,6 @@ class MatchFilterForLeadTraitTest extends TestCase
             false,
         ];
     }
-
-    public function testMatchFilterForLeadTraitEmptyCompany(): void
-    {
-        $lead = [
-            'id'        => 1,
-            'firstname' => 'Test',
-            'companies' => [],
-        ];
-
-        $filters = [
-            0 => [
-                'glue'      => 'and',
-                'field'     => 'companycity',
-                'object'    => 'company',
-                'type'      => 'text',
-                'filter'    => 'New York',
-                'display'   => null,
-                'operator'  => '=',
-            ],
-        ];
-
-        try {
-            $this->assertEquals(false, $this->matchFilterForLeadTrait->match($filters, $lead));
-        } catch (\Exception $e) {
-            $this->fail($e->getMessage());
-        }
-    }
 }
 
 class MatchFilterForLeadTraitTestable

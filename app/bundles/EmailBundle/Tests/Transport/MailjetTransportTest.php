@@ -34,17 +34,17 @@ class MailjetTransportTest extends \PHPUnit\Framework\TestCase
             ->method('addFailureByHashId')
             ->withConsecutive(
                 [$this->equalTo('1'), 'User unsubscribed', DoNotContact::UNSUBSCRIBED],
-                [$this->equalTo('2'), 'BLOCKED: blocked: blocked', DoNotContact::BOUNCED],
+                [$this->equalTo('2'), 'blocked: blocked', DoNotContact::BOUNCED],
                 [$this->equalTo('3'), 'User reported email as spam, source: spam button', DoNotContact::UNSUBSCRIBED],
-                [$this->equalTo('4'), 'SOFT: bounced: bounced: text of mailjet', DoNotContact::BOUNCED],
-                [$this->equalTo('5'), 'HARD: bounced: bounced', DoNotContact::BOUNCED]
+                [$this->equalTo('4'), 'bounced: bounced', DoNotContact::BOUNCED],
+                [$this->equalTo('5'), 'bounced: bounced', DoNotContact::BOUNCED]
             );
 
         $this->transportCallback->expects($this->once())
             ->method('addFailureByAddress')
             ->with(
                 'bounce2@test.com',
-                'HARD: bounced: bounce without hash',
+                'bounced: bounce without hash',
                 DoNotContact::BOUNCED
             );
 
@@ -119,10 +119,9 @@ class MailjetTransportTest extends \PHPUnit\Framework\TestCase
     "CustomID": "4-bounce@test.com",
     "Payload": "",
     "blocked": "",
-    "hard_bounce": false,
+    "hard_bounce": "",
     "error_related_to": "bounced",
-    "error": "bounced",
-    "comment": "text of mailjet"
+    "error": "bounced"
   }, 
   {
     "event": "bounce",
@@ -135,7 +134,7 @@ class MailjetTransportTest extends \PHPUnit\Framework\TestCase
     "CustomID": "5-bounce3@test-test.com",
     "Payload": "",
     "blocked": "",
-    "hard_bounce": true,
+    "hard_bounce": "",
     "error_related_to": "bounced",
     "error": "bounced"
   },

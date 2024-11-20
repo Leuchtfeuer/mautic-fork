@@ -36,7 +36,6 @@ return [
                 'arguments' => [
                     '%mautic.cache_prefix%',
                     '%mautic.cache_lifetime%',
-                    '%mautic.tmp_path%',
                 ],
                 'tag'       => 'mautic.cache.adapter',
             ],

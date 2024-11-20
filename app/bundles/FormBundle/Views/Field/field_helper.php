@@ -1,7 +1,5 @@
 <?php
 
-use Mautic\CoreBundle\Helper\InputHelper;
-
 $appendAttribute = function (&$attributes, $attributeName, $append) {
     if (false === stripos($attributes, "{$attributeName}=")) {
         $attributes .= ' '.$attributeName.'="'.$append.'"';
@@ -78,7 +76,7 @@ if (!empty($inForm)) {
 }
 
 // Container
-$containerAttr = 'id="mauticform'.$formName.'_'.$id.'" '.InputHelper::cleanInputAttributes($field['containerAttributes']);
+$containerAttr = 'id="mauticform'.$formName.'_'.$id.'" '.htmlspecialchars_decode($field['containerAttributes']);
 
 if (!isset($containerClass)) {
     $containerClass = $containerType;

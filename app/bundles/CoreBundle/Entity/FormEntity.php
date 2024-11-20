@@ -161,10 +161,9 @@ class FormEntity extends CommonEntity
     public function __clone()
     {
         $this->dateAdded    = null;
-        $this->dateModified = new \DateTime();
+        $this->dateModified = null;
         $this->checkedOut   = null;
         $this->isPublished  = false;
-        $this->createdBy    = null;
         $this->changes      = [];
     }
 

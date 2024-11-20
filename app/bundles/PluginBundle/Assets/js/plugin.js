@@ -256,10 +256,7 @@ Mautic.getIntegrationFields = function(settings, page, el) {
             if (inModal) {
                 Mautic.stopModalLoadingBar(modalId);
             }
-        },
-        false,
-        false,
-        "GET"
+        }
     );
 };
 
@@ -284,10 +281,7 @@ Mautic.getIntegrationConfig = function (el, settings) {
 
             Mautic.integrationConfigOnLoad('.integration-config-container');
             Mautic.removeLabelLoadingIndicator();
-        },
-        false,
-        false,
-        "GET"
+        }
     );
 
 
@@ -317,10 +311,7 @@ Mautic.getIntegrationCampaignStatus = function (el, settings) {
 
             Mautic.integrationConfigOnLoad('.integration-campaigns-status');
             Mautic.removeLabelLoadingIndicator();
-        },
-        false,
-        false,
-        "GET"
+        }
     );
 };
 
@@ -340,9 +331,6 @@ Mautic.getIntegrationCampaigns = function (el, settings) {
 
             Mautic.integrationConfigOnLoad('.integration-campaigns');
             Mautic.removeLabelLoadingIndicator();
-        },
-        false,
-        false,
-        "GET"
+        }
     );
 };

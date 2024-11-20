@@ -66,8 +66,7 @@ Mautic.loadAjaxModal = function (target, route, method, header, footer, preventD
     //move the modal to the body tag to get around positioned div issues
     mQuery(target).one('show.bs.modal', function () {
         if (header) {
-            // use text instead of html method to prevent XSS
-            mQuery(target + " .modal-title").text(header);
+            mQuery(target + " .modal-title").html(header);
         }
 
         if (footer && footer != 'false') {

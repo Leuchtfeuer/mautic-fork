@@ -2126,12 +2126,8 @@ Mautic.getDynamicContentDataForToken = function(token) {
     if (dynConContainer.html()) {
         var dynConContent = dynConContainer.find(dynConTarget+'_content');
 
-        if (Mautic.getActiveBuilderName() === 'legacy') {
-            if (dynConContent.data('froala.editor')) {
-                dynConContent = dynConContent.froalaEditor('html.get');
-            } else {
-                dynConContent = dynConContent.text();
-            }
+        if (dynConContent.hasClass('editor') && Mautic.getActiveBuilderName() === 'legacy') {
+            dynConContent = dynConContent.froalaEditor('html.get');
         } else {
             dynConContent = dynConContent.html();
         }
