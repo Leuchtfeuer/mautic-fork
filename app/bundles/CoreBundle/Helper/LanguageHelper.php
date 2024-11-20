@@ -169,49 +169,53 @@ class LanguageHelper
         }
 
         // Get the language data
-        try {
-            $data = $this->client->get(
-                $this->coreParametersHelper->get('translations_list_url'),
-                [\GuzzleHttp\RequestOptions::TIMEOUT => 10]
-            );
-            $manifest  = json_decode($data->getBody(), true);
-            $languages = [];
-
-            // translate the manifest (plain array) to a format
-            // expected everywhere else inside mautic (locale keyed sorted array)
-            foreach ($manifest['languages'] as $lang) {
-                $languages[$lang['locale']] = $lang;
-            }
-            ksort($languages);
-        } catch (\Exception $exception) {
-            // Log the error
-            $this->logger->error('An error occurred while attempting to fetch the language list: '.$exception->getMessage());
-
-            return (!$returnError)
-                ? []
-                : [
-                    'error'   => true,
-                    'message' => 'mautic.core.language.helper.error.fetching.languages',
-                ];
-        }
-
-        if (200 != $data->getStatusCode()) {
-            // Log the error
-            $this->logger->error(
-                sprintf(
-                    'An unexpected %1$s code was returned while attempting to fetch the language.  The message received was: %2$s',
-                    $data->code,
-                    (string) $data->getBody()
-                )
-            );
-
-            return (!$returnError)
-                ? []
-                : [
-                    'error'   => true,
-                    'message' => 'mautic.core.language.helper.error.fetching.languages',
-                ];
-        }
+        $fake_json = '{"languages":{"de":{"id":"2","name":"German","code":"de"},"en_GB":{"id":"3","name":"English (United Kingdom)","code":"en_GB"}}}';
+        $languages = json_decode($fake_json, true);
+        $languages = $languages['languages'];
+        //
+        // try {
+        //     $data = $this->client->get(
+        //         $this->coreParametersHelper->get('translations_list_url'),
+        //         [\GuzzleHttp\RequestOptions::TIMEOUT => 10]
+        //     );
+        //     $manifest  = json_decode($data->getBody(), true);
+        //     $languages = [];
+        //
+        //     // translate the manifest (plain array) to a format
+        //     // expected everywhere else inside mautic (locale keyed sorted array)
+        //     foreach ($manifest['languages'] as $lang) {
+        //         $languages[$lang['locale']] = $lang;
+        //     }
+        //     ksort($languages);
+        // } catch (\Exception $exception) {
+        //     // Log the error
+        //     $this->logger->addError('An error occurred while attempting to fetch the language list: '.$exception->getMessage());
+        //
+        //     return (!$returnError)
+        //         ? []
+        //         : [
+        //             'error'   => true,
+        //             'message' => 'mautic.core.language.helper.error.fetching.languages',
+        //         ];
+        // }
+        //
+        // if (200 != $data->getStatusCode()) {
+        //     // Log the error
+        //     $this->logger->addError(
+        //         sprintf(
+        //             'An unexpected %1$s code was returned while attempting to fetch the language.  The message received was: %2$s',
+        //             $data->code,
+        //             (string) $data->getBody()
+        //         )
+        //     );
+        //
+        //     return (!$returnError)
+        //         ? []
+        //         : [
+        //             'error'   => true,
+        //             'message' => 'mautic.core.language.helper.error.fetching.languages',
+        //         ];
+        // }
 
         // Store to cache
         $cacheData = [
