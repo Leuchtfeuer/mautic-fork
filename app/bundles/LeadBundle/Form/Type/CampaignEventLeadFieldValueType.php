@@ -106,8 +106,7 @@ class CampaignEventLeadFieldValueType extends AbstractType
                                 $fieldValues = FormFieldHelper::getTimezonesChoices();
                                 break;
                             case 'locale':
-                                // Locales are flipped. And yes, we will flip the array again below.
-                                $fieldValues = array_flip(FormFieldHelper::getLocaleChoices());
+                                $fieldValues = FormFieldHelper::getLocaleChoices();
                                 break;
                             case 'date':
                             case 'datetime':

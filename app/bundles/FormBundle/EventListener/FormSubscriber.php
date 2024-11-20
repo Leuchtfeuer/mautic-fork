@@ -137,7 +137,7 @@ class FormSubscriber implements EventSubscriberInterface
         ]);
     }
 
-    public function onFormSubmitActionSendEmail(Events\SubmissionEvent $event): void
+    public function onFormSubmitActionSendEmail(Events\SubmissionEvent $event)
     {
         if (!$event->checkContext('form.email')) {
             return;
@@ -148,26 +148,14 @@ class FormSubscriber implements EventSubscriberInterface
             foreach ($tokens as &$value) {
                 $value = nl2br(html_entity_decode($value, ENT_QUOTES));
             }
-            unset($value);
         }
 
         $config    = $event->getActionConfig();
         $lead      = $event->getSubmission()->getLead();
         $leadEmail = null !== $lead ? $lead->getEmail() : null;
-        $ccEmails  = $bccEmails = [];
         $emails    = $this->getEmailsFromString($config['to']);
 
-        if (isset($config['cc']) && '' !== $config['cc']) {
-            $ccEmails = $this->getEmailsFromString($config['cc']);
-            unset($config['cc']);
-        }
-
-        if (isset($config['bcc']) && '' !== $config['bcc']) {
-            $bccEmails = $this->getEmailsFromString($config['bcc']);
-            unset($config['bcc']);
-        }
-
-        if (count($emails) > 0 || count($ccEmails) > 0 || count($bccEmails) > 0) {
+        if (!empty($emails)) {
             $this->setMailer($config, $tokens, $emails, $lead);
 
             // Check for !isset to keep BC to existing behavior prior to 2.13.0
@@ -176,12 +164,14 @@ class FormSubscriber implements EventSubscriberInterface
                 $this->mailer->setReplyTo($leadEmail);
             }
 
-            if (count($ccEmails) > 0) {
-                $this->mailer->setCc($ccEmails);
+            if (!empty($config['cc'])) {
+                $emails = $this->getEmailsFromString($config['cc']);
+                $this->mailer->setCc($emails);
             }
 
-            if (count($bccEmails) > 0) {
-                $this->mailer->setBcc($bccEmails);
+            if (!empty($config['bcc'])) {
+                $emails = $this->getEmailsFromString($config['bcc']);
+                $this->mailer->setBcc($emails);
             }
 
             $this->mailer->send(true);
@@ -189,7 +179,7 @@ class FormSubscriber implements EventSubscriberInterface
 
         if ($config['copy_lead'] && !empty($leadEmail)) {
             // Send copy to lead
-            $this->setMailer($config, $tokens, [$leadEmail => null], $lead, false);
+            $this->setMailer($config, $tokens, $leadEmail, $lead, false);
 
             $this->mailer->send(true);
         }
@@ -197,7 +187,7 @@ class FormSubscriber implements EventSubscriberInterface
         $owner = null !== $lead ? $lead->getOwner() : null;
         if (!empty($config['email_to_owner']) && $config['email_to_owner'] && null !== $owner) {
             // Send copy to owner
-            $this->setMailer($config, $tokens, [$owner->getEmail() => null], $lead);
+            $this->setMailer($config, $tokens, $owner->getEmail(), $lead);
 
             $this->mailer->send(true);
         }
@@ -401,19 +391,18 @@ class FormSubscriber implements EventSubscriberInterface
     /**
      * @param $emailString
      *
-     * @return array<string, null>
+     * @return array
      */
-    private function getEmailsFromString($emailString): array
+    private function getEmailsFromString($emailString)
     {
         return (!empty($emailString)) ? array_fill_keys(array_map('trim', explode(',', $emailString)), null) : [];
     }
 
     /**
-     * @param array<mixed>               $config
-     * @param array<mixed>               $tokens
-     * @param array<string, string|null> $to
+     * @param      $to
+     * @param bool $internalSend
      */
-    private function setMailer(array $config, array $tokens, array $to, Lead $lead = null, bool $internalSend = true): void
+    private function setMailer(array $config, array $tokens, $to, Lead $lead = null, $internalSend = true)
     {
         $this->mailer->reset();
 
@@ -422,10 +411,7 @@ class FormSubscriber implements EventSubscriberInterface
             $this->mailer = $this->mailer->getSampleMailer();
         }
 
-        if (count($to)) {
-            $this->mailer->setTo($to);
-        }
-
+        $this->mailer->setTo($to);
         $this->mailer->setSubject($config['subject']);
         $this->mailer->addTokens($tokens);
         $this->mailer->setBody($config['message']);

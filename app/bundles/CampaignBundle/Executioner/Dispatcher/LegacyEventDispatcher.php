@@ -126,7 +126,7 @@ class LegacyEventDispatcher
 
                 // Dispatch new events for legacy processed logs
                 if ($this->isFailed($result)) {
-                    $this->processFailedLog($log, $pendingEvent);
+                    $this->processFailedLog($result, $log, $pendingEvent);
 
                     $rescheduleFailures->set($log->getId(), $log);
 
@@ -326,7 +326,10 @@ class LegacyEventDispatcher
             || (is_array($result) && isset($result['result']) && false === $result['result']);
     }
 
-    private function processFailedLog(LeadEventLog $log, PendingEvent $pendingEvent)
+    /**
+     * @param $result
+     */
+    private function processFailedLog($result, LeadEventLog $log, PendingEvent $pendingEvent)
     {
         $this->logger->debug(
             'CAMPAIGN: '.ucfirst($log->getEvent()->getEventType()).' ID# '.$log->getEvent()->getId().' for contact ID# '.$log->getLead()->getId()

@@ -7,9 +7,6 @@ on:
         required: true
         default: 'none'
 
-permissions:
-  contents: read
-
 jobs:
   release-notes:
     name: Create draft release

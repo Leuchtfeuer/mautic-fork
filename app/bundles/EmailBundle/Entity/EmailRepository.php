@@ -10,6 +10,9 @@ use Mautic\ChannelBundle\Entity\MessageQueue;
 use Mautic\CoreBundle\Entity\CommonRepository;
 use Mautic\LeadBundle\Entity\DoNotContact;
 
+/**
+ * Class EmailRepository.
+ */
 class EmailRepository extends CommonRepository
 {
     /**
@@ -82,7 +85,7 @@ class EmailRepository extends CommonRepository
     /**
      * Delete DNC row.
      *
-     * @param int $id
+     * @param $id
      */
     public function deleteDoNotEmailEntry($id)
     {
@@ -136,15 +139,14 @@ class EmailRepository extends CommonRepository
     }
 
     /**
-     * @param int            $emailId
-     * @param int[]|null     $variantIds
-     * @param int[]|null     $listIds
-     * @param bool           $countOnly
-     * @param int|null       $limit
-     * @param int|null       $minContactId
-     * @param int|null       $maxContactId
-     * @param bool           $countWithMaxMin
-     * @param \DateTime|null $maxDate
+     * @param      $emailId
+     * @param null $variantIds
+     * @param null $listIds
+     * @param bool $countOnly
+     * @param null $limit
+     * @param int  $minContactId
+     * @param int  $maxContactId
+     * @param bool $countWithMaxMin
      *
      * @return QueryBuilder|int|array
      */
@@ -156,21 +158,26 @@ class EmailRepository extends CommonRepository
         $limit = null,
         $minContactId = null,
         $maxContactId = null,
-        $countWithMaxMin = false,
-        $maxDate = null
+        $countWithMaxMin = false
     ) {
         // Do not include leads in the do not contact table
         $dncQb = $this->getEntityManager()->getConnection()->createQueryBuilder();
-        $dncQb->select('dnc.lead_id')
+        $dncQb->select('null')
             ->from(MAUTIC_TABLE_PREFIX.'lead_donotcontact', 'dnc')
-            ->where($dncQb->expr()->eq('dnc.channel', $dncQb->expr()->literal('email')));
+            ->where(
+                $dncQb->expr()->andX(
+                    $dncQb->expr()->eq('dnc.lead_id', 'l.id'),
+                    $dncQb->expr()->eq('dnc.channel', $dncQb->expr()->literal('email'))
+                )
+            );
 
         // Do not include contacts where the message is pending in the message queue
         $mqQb = $this->getEntityManager()->getConnection()->createQueryBuilder();
-        $mqQb->select('mq.lead_id')
+        $mqQb->select('null')
             ->from(MAUTIC_TABLE_PREFIX.'message_queue', 'mq')
             ->where(
                 $mqQb->expr()->andX(
+                    $mqQb->expr()->eq('mq.lead_id', 'l.id'),
                     $mqQb->expr()->neq('mq.status', $mqQb->expr()->literal(MessageQueue::STATUS_SENT)),
                     $mqQb->expr()->eq('mq.channel', $mqQb->expr()->literal('email'))
                 )
@@ -178,14 +185,15 @@ class EmailRepository extends CommonRepository
 
         // Do not include leads that have already been emailed
         $statQb = $this->getEntityManager()->getConnection()->createQueryBuilder();
-        $statQb->select('stat.lead_id')
-            ->from(MAUTIC_TABLE_PREFIX.'email_stats', 'stat');
-
-        $statQb->andWhere($statQb->expr()->isNotNull('stat.lead_id'));
+        $statQb->select('null')
+            ->from(MAUTIC_TABLE_PREFIX.'email_stats', 'stat')
+            ->where(
+                $statQb->expr()->eq('stat.lead_id', 'l.id')
+            );
 
         if ($variantIds) {
             if (!in_array($emailId, $variantIds)) {
-                $variantIds[] = (string) $emailId;
+                $variantIds[] = (int) $emailId;
             }
             $statQb->andWhere($statQb->expr()->in('stat.email_id', $variantIds));
             $mqQb->andWhere($mqQb->expr()->in('mq.channel_id', $variantIds));
@@ -204,7 +212,10 @@ class EmailRepository extends CommonRepository
                 ->execute()
                 ->fetchAll();
 
-            $listIds = array_column($lists, 'leadlist_id');
+            $listIds = [];
+            foreach ($lists as $list) {
+                $listIds[] = $list['leadlist_id'];
+            }
 
             if (empty($listIds)) {
                 // Prevent fatal error
@@ -216,19 +227,15 @@ class EmailRepository extends CommonRepository
 
         // Only include those in associated segments
         $segmentQb = $this->getEntityManager()->getConnection()->createQueryBuilder();
-        $segmentQb->select('ll.lead_id')
+        $segmentQb->select('null')
             ->from(MAUTIC_TABLE_PREFIX.'lead_lists_leads', 'll')
             ->where(
                 $segmentQb->expr()->andX(
+                    $segmentQb->expr()->eq('ll.lead_id', 'l.id'),
                     $segmentQb->expr()->in('ll.leadlist_id', $listIds),
                     $segmentQb->expr()->eq('ll.manually_removed', ':false')
                 )
             );
-
-        if (null !== $maxDate) {
-            $segmentQb->andWhere($segmentQb->expr()->lte('ll.date_added', ':max_date'));
-            $segmentQb->setParameter('max_date', $maxDate, \Doctrine\DBAL\Types\Types::DATETIME_MUTABLE);
-        }
 
         // Main query
         $q = $this->getEntityManager()->getConnection()->createQueryBuilder();
@@ -242,15 +249,11 @@ class EmailRepository extends CommonRepository
         }
 
         $q->from(MAUTIC_TABLE_PREFIX.'leads', 'l')
-            ->andWhere(sprintf('l.id IN (%s)', $segmentQb->getSQL()))
-            ->andWhere(sprintf('l.id NOT IN (%s)', $dncQb->getSQL()))
-            ->andWhere(sprintf('l.id NOT IN (%s)', $statQb->getSQL()))
-            ->andWhere(sprintf('l.id NOT IN (%s)', $mqQb->getSQL()))
+            ->andWhere(sprintf('EXISTS (%s)', $segmentQb->getSQL()))
+            ->andWhere(sprintf('NOT EXISTS (%s)', $dncQb->getSQL()))
+            ->andWhere(sprintf('NOT EXISTS (%s)', $statQb->getSQL()))
+            ->andWhere(sprintf('NOT EXISTS (%s)', $mqQb->getSQL()))
             ->setParameter('false', false, 'boolean');
-
-        // Do not include leads which are not subscribed to the category set for email.
-        $unsubscribeLeadsQb = $this->getCategoryUnsubscribedLeadsQuery((int) $emailId);
-        $q->andWhere(sprintf('l.id NOT IN (%s)', $unsubscribeLeadsQb->getSQL()));
 
         $q = $this->setMinMaxIds($q, 'l.id', $minContactId, $maxContactId);
 
@@ -271,14 +274,14 @@ class EmailRepository extends CommonRepository
     }
 
     /**
-     * @param int        $emailId
-     * @param int[]|null $variantIds
-     * @param int[]|null $listIds
-     * @param bool       $countOnly
-     * @param int|null   $limit
-     * @param int|null   $minContactId
-     * @param int|null   $maxContactId
-     * @param bool       $countWithMaxMin
+     * @param      $emailId
+     * @param null $variantIds
+     * @param null $listIds
+     * @param bool $countOnly
+     * @param null $limit
+     * @param int  $minContactId
+     * @param int  $maxContactId
+     * @param bool $countWithMaxMin
      *
      * @return array|int
      */
@@ -325,13 +328,13 @@ class EmailRepository extends CommonRepository
     }
 
     /**
-     * @param string      $search
-     * @param int         $limit
-     * @param int         $start
-     * @param bool        $viewOther
-     * @param bool        $topLevel
-     * @param string|null $emailType
-     * @param int|null    $variantParentId
+     * @param string $search
+     * @param int    $limit
+     * @param int    $start
+     * @param bool   $viewOther
+     * @param bool   $topLevel
+     * @param null   $emailType
+     * @param null   $variantParentId
      *
      * @return array
      */
@@ -396,7 +399,7 @@ class EmailRepository extends CommonRepository
 
     /**
      * @param \Doctrine\ORM\QueryBuilder|QueryBuilder $q
-     * @param object                                  $filter
+     * @param                                         $filter
      *
      * @return array
      */
@@ -410,7 +413,7 @@ class EmailRepository extends CommonRepository
 
     /**
      * @param \Doctrine\ORM\QueryBuilder|QueryBuilder $q
-     * @param object                                  $filter
+     * @param                                         $filter
      *
      * @return array
      */
@@ -493,13 +496,13 @@ class EmailRepository extends CommonRepository
     /**
      * Resets variant_start_date, variant_read_count, variant_sent_count.
      *
-     * @param string[]|string|int $relatedIds
-     * @param string              $date
+     * @param $relatedIds
+     * @param $date
      */
     public function resetVariants($relatedIds, $date)
     {
         if (!is_array($relatedIds)) {
-            $relatedIds = [(string) $relatedIds];
+            $relatedIds = [(int) $relatedIds];
         }
 
         $qb = $this->getEntityManager()->getConnection()->createQueryBuilder();
@@ -557,7 +560,7 @@ class EmailRepository extends CommonRepository
     }
 
     /**
-     * @param int|null $id
+     * @param null $id
      *
      * @return \Doctrine\ORM\Internal\Hydration\IterableResult
      */
@@ -623,17 +626,5 @@ class EmailRepository extends CommonRepository
             ->getOneOrNullResult();
 
         return (bool) $result;
-    }
-
-    private function getCategoryUnsubscribedLeadsQuery(int $emailId): QueryBuilder
-    {
-        $qb = $this->getEntityManager()->getConnection()
-            ->createQueryBuilder();
-
-        return $qb->select('lc.lead_id')
-            ->from(MAUTIC_TABLE_PREFIX.'lead_categories', 'lc')
-            ->innerJoin('lc', MAUTIC_TABLE_PREFIX.'emails', 'e', 'e.category_id = lc.category_id')
-            ->where($qb->expr()->eq('e.id', $emailId))
-            ->andWhere('lc.manually_removed = 1');
     }
 }

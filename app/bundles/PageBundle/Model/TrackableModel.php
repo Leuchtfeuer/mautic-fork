@@ -356,10 +356,26 @@ class TrackableModel extends AbstractCommonModel
         libxml_use_internal_errors($libxmlPreviousState);
         $links = $dom->getElementsByTagName('a');
 
-        $xpath = new \DOMXpath($dom);
-        $maps  = $xpath->query('//map/area');
+        $trackableUrls = [];
 
-        return array_merge($this->extractTrackables($links), $this->extractTrackables($maps));
+        /** @var \DOMElement $link */
+        foreach ($links as $link) {
+            $url = $link->getAttribute('href');
+
+            // Check for a do not track
+            if ($link->hasAttribute('mautic:disable-tracking')) {
+                $this->doNotTrack[$url] = $url;
+
+                continue;
+            }
+
+            if ($preparedUrl = $this->prepareUrlForTracking($url)) {
+                list($urlKey, $urlValue) = $preparedUrl;
+                $trackableUrls[$urlKey]  = $urlValue;
+            }
+        }
+
+        return $trackableUrls;
     }
 
     /**
@@ -896,37 +912,5 @@ class TrackableModel extends AbstractCommonModel
         $this->leadFieldRepository->detachEntities($fieldEntities);
 
         return $this->contactFieldUrlTokens;
-    }
-
-    /**
-     * @param \DOMNodeList<\DOMNode> $links
-     *
-     * @return array<string, string>
-     */
-    private function extractTrackables(\DOMNodeList $links): array
-    {
-        $trackableUrls = [];
-        /** @var \DOMElement $link */
-        foreach ($links as $link) {
-            $url = $link->getAttribute('href');
-
-            if ('' === $url) {
-                continue;
-            }
-
-            // Check for a do not track
-            if ($link->hasAttribute('mautic:disable-tracking')) {
-                $this->doNotTrack[$url] = $url;
-
-                continue;
-            }
-
-            if ($preparedUrl = $this->prepareUrlForTracking($url)) {
-                [$urlKey, $urlValue]     = $preparedUrl;
-                $trackableUrls[$urlKey]  = $urlValue;
-            }
-        }
-
-        return $trackableUrls;
     }
 }

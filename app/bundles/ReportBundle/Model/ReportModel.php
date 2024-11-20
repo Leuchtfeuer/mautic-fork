@@ -664,7 +664,7 @@ class ReportModel extends FormModel
             $data = $event->getData();
         }
 
-        if ($this->isDebugMode()) {
+        if (MAUTIC_ENV == 'dev') {
             $debugData['query'] = $query->getSQL();
             $params             = $query->getParameters();
 
@@ -797,7 +797,7 @@ class ReportModel extends FormModel
         $countQb->select('count(*)')
             ->from('('.$qb->getSQL().')', 'c');
 
-        if ($this->isDebugMode()) {
+        if (MAUTIC_ENV == 'dev') {
             $debugData['count_query'] = $countQb->getSQL();
         }
 
@@ -845,10 +845,5 @@ class ReportModel extends FormModel
         }
 
         return $this->em->getConnection();
-    }
-
-    protected function isDebugMode(): bool
-    {
-        return MAUTIC_ENV == 'dev' || $this->coreParametersHelper->get('debug');
     }
 }

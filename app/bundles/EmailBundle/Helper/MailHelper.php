@@ -345,7 +345,6 @@ class MailHelper
                     if (!empty($owner)) {
                         $this->setFrom($owner['email'], $owner['first_name'].' '.$owner['last_name']);
                         $ownerSignature = $this->getContactOwnerSignature($owner);
-                        $this->setReplyTo($owner['email']);
                     } else {
                         $this->setFrom($this->systemFrom, null);
                     }
@@ -411,10 +410,6 @@ class MailHelper
 
                     self::searchReplaceTokens($search, $replace, $this->message);
                 }
-            }
-
-            if (true === $this->factory->getParameter('mailer_convert_embed_images')) {
-                $this->convertEmbedImages();
             }
 
             // Attach assets
@@ -973,6 +968,10 @@ class MailHelper
      */
     public function setBody($content, $contentType = 'text/html', $charset = null, $ignoreTrackingPixel = false)
     {
+        if ($this->factory->getParameter('mailer_convert_embed_images')) {
+            $content = $this->convertEmbedImages($content);
+        }
+
         if (!$ignoreTrackingPixel && $this->factory->getParameter('mailer_append_tracking_pixel')) {
             // Append tracking pixel
             $trackingImg = '<img height="1" width="1" src="{tracking_pixel}" alt="" />';
@@ -993,30 +992,25 @@ class MailHelper
         ];
     }
 
-    private function convertEmbedImages(): void
+    /**
+     * @param string $content
+     *
+     * @return string
+     */
+    private function convertEmbedImages($content)
     {
-        $content = $this->message->getBody();
         $matches = [];
         $content = strtr($content, $this->embedImagesReplaces);
-        $tokens  = $this->getTokens();
-        if (preg_match_all('/<img.+?src=[\"\'](.+?)[\"\'].*?>/i', $content, $matches) > 0) {
+        if (preg_match_all('/<img.+?src=[\"\'](.+?)[\"\'].*?>/i', $content, $matches)) {
             foreach ($matches[1] as $match) {
-                // skip items that already embedded, or have token {tracking_pixel}
-                if (false !== strpos($match, 'cid:') || false !== strpos($match, '{tracking_pixel}') || array_key_exists($match, $this->embedImagesReplaces)) {
-                    continue;
+                if (false === strpos($match, 'cid:') && false === strpos($match, '{tracking_pixel}') && !array_key_exists($match, $this->embedImagesReplaces)) {
+                    $this->embedImagesReplaces[$match] = $this->message->embed(\Swift_Image::fromPath($match));
                 }
-
-                // skip images with tracking pixel that are already replaced.
-                if (isset($tokens['{tracking_pixel}']) && $match === $tokens['{tracking_pixel}']) {
-                    continue;
-                }
-
-                $this->embedImagesReplaces[$match] = $this->message->embed(\Swift_Image::fromPath($match));
             }
             $content = strtr($content, $this->embedImagesReplaces);
         }
 
-        $this->message->setBody($content);
+        return $content;
     }
 
     /**
@@ -1896,7 +1890,7 @@ class MailHelper
             $copyCreated = false;
             if (null === $copy) {
                 $contentToPersist = strtr($this->body['content'], array_flip($this->embedImagesReplaces));
-                if (!$emailModel->getCopyRepository()->saveCopy($hash, $this->subject, $contentToPersist, $this->plainText)) {
+                if (!$emailModel->getCopyRepository()->saveCopy($hash, $this->subject, $contentToPersist)) {
                     // Try one more time to find the ID in case there was overlap when creating
                     $copy = $emailModel->getCopyRepository()->findByHash($hash);
                 } else {

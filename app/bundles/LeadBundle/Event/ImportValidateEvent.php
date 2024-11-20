@@ -11,8 +11,8 @@ class ImportValidateEvent extends Event
 {
     private string $routeObjectName;
     private Form $form;
-    private ?int $ownerId = null;
-    private ?int $list    = null;
+    private ?int $ownerId;
+    private ?int $list;
 
     /**
      * @var mixed[]

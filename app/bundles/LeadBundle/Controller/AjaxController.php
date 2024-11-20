@@ -855,7 +855,7 @@ class AjaxController extends CommonAjaxController
                         $options = FormFieldHelper::getTimezonesChoices();
                         break;
                     case 'locale':
-                        $options = array_flip(FormFieldHelper::getLocaleChoices());
+                        $options = FormFieldHelper::getLocaleChoices();
                         break;
                     case 'date':
                     case 'datetime':

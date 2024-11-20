@@ -6,14 +6,16 @@ export default class CodeModeCommand {
    */
   static name = 'preset-mautic:code-edit';
 
-  static codeEditor;
+  codeEditor;
 
   static launchCodeEditorModal(editor, sender, opts) {
     if (!editor) {
       throw new Error('no editor');
     }
 
-    CodeModeCommand.codeEditor = new CodeEditor(editor, opts);
+    if (!CodeModeCommand.codeEditor) {
+      CodeModeCommand.codeEditor = new CodeEditor(editor, opts);
+    }
 
     if (sender) {
       sender.set('active', 0);
