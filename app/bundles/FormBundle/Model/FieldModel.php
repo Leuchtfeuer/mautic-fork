@@ -143,7 +143,7 @@ class FieldModel extends CommonFormModel
      */
     public function generateAlias($label, &$aliases)
     {
-        $alias = $this->cleanAlias($label, 'f_', 25);
+        $alias = $this->cleanAlias($label, 'f_', 64);
 
         //make sure alias is not already taken
         $testAlias = $alias;
