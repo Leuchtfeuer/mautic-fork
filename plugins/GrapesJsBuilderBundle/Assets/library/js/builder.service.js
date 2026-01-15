@@ -12,6 +12,7 @@ import grapesjsstylebg from 'grapesjs-style-bg';
 import grapesjspostcss from 'grapesjs-parser-postcss';
 import grapesjsckeditor from './plugins/grapesjs.ckeditor';
 import grapesjsMjmlThemeTokens, { pluginId as mjmlThemeTokensPluginId } from './plugins/grapesjs.mjmlThemeTokens';
+import grapesjsMjmlCustomBlocks, { pluginId as mjmlCustomBlocksPluginId } from './plugins/grapesjs.mjmlCustomBlocks';
 import contentService from 'grapesjs-preset-mautic/dist/content.service';
 import grapesjsmautic from 'grapesjs-preset-mautic';
 import editorFontsService from 'grapesjs-preset-mautic/dist/editorFonts/editorFonts.service';
@@ -1210,6 +1211,7 @@ export default class BuilderService {
       plugins: [
         grapesjsmjml,
         grapesjsMjmlThemeTokens,
+        grapesjsMjmlCustomBlocks,
         grapesjspostcss,
         grapesjsmautic,
         grapesjsckeditor,
@@ -1226,6 +1228,11 @@ export default class BuilderService {
 
         [grapesjsMjmlThemeTokens]: {
           headContent: this.cachedMjHeadContent
+        },
+
+        [mjmlCustomBlocksPluginId]: {
+          category: Mautic.translate('grapesjsbuilder.categoryBlockLabel') || 'Blocks',
+          label: 'Secondary Button',
         },
 
         grapesjsmautic: BuilderService.getMauticConf('email-mjml'),
