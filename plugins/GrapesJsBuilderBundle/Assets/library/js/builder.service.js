@@ -14,7 +14,8 @@ import grapesjsckeditor from './plugins/grapesjs-ckeditor';
 import contentService from 'grapesjs-preset-mautic/dist/content.service';
 import grapesjsmautic from 'grapesjs-preset-mautic';
 import editorFontsService from 'grapesjs-preset-mautic/dist/editorFonts/editorFonts.service';
-import StorageService from './storage.service';
+import StorageService from "./storage.service";
+import mjml2html from 'mjml-browser';
 
 // for local dev
 // import contentService from '../../../../../../grapesjs-preset-mautic/src/content.service';
@@ -52,16 +53,11 @@ export default class BuilderService {
   optimisticLockVersion;
 
   /**
-   * Cached mj-head content from the theme for injection into component rendering.
-   * This ensures theme tokens (mj-attributes, mj-class) are applied in the editor canvas.
+   * Cached mj-head inner content from the theme/template.
+   * Used to inject theme tokens (mj-attributes, mj-class) into fragment compilation
+   * so styles are visible in the editor canvas.
    */
   cachedMjHeadContent = '';
-
-  /**
-   * Parsed mj-class definitions from the theme.
-   * Maps class names to their attribute values.
-   */
-  mjClassDefinitions = {};
 
   /**
    * @param {AssetService} assetService
@@ -534,9 +530,9 @@ export default class BuilderService {
   }
 
   /**
-   * Extract mj-head content from MJML for injection into component rendering.
+   * Extract mj-head inner content from MJML (without the tags).
    * @param {string} mjml - Full MJML content
-   * @returns {string} - The inner content of mj-head (without the tags)
+   * @returns {string}
    */
   extractMjHeadContent(mjml) {
     if (!mjml) return '';
@@ -545,148 +541,81 @@ export default class BuilderService {
   }
 
   /**
-   * Parse mj-class definitions from mj-head content.
-   * Returns a map of class names to their attribute values.
-   * @param {string} mjHeadContent - The inner content of mj-head
-   * @returns {Object} - Map of class name to attributes object
+   * Create an MJML parser wrapper that injects the cached <mj-head> into MJML fragments.
+   * This avoids patching every MJML component View.
+   *
+   * @param {() => string} getHeadContent
+   * @returns {(input: string|any, opts: any) => any}
    */
-  parseMjClassDefinitions(mjHeadContent) {
-    const classes = {};
-    if (!mjHeadContent) return classes;
-
-    // Match all mj-class elements: <mj-class name="t-h1" font-size="32px" ...>
-    const mjClassRegex = /<mj-class\s+([^>]*?)(?:\/>|><\/mj-class>|>)/gi;
-    let match;
-
-    while ((match = mjClassRegex.exec(mjHeadContent)) !== null) {
-      const attrString = match[1];
-
-      // Extract the name attribute
-      const nameMatch = attrString.match(/name\s*=\s*["']([^"']+)["']/i);
-      if (!nameMatch) continue;
-
-      const className = nameMatch[1];
-      const attrs = {};
-
-      // Extract all other attributes
-      const attrRegex = /(\S+)\s*=\s*["']([^"']*)["']/g;
-      let attrMatch;
-      while ((attrMatch = attrRegex.exec(attrString)) !== null) {
-        const [, attrName, attrValue] = attrMatch;
-        if (attrName.toLowerCase() !== 'name') {
-          attrs[attrName] = attrValue;
-        }
+  createHeadInjectingMjmlParser(getHeadContent) {
+    return (input, opts) => {
+      // mjml-browser can accept MJML JSON too; only inject into string inputs
+      if (typeof input !== 'string') {
+        return mjml2html(input, opts);
       }
 
-      classes[className] = attrs;
-    }
+      const headContent = (getHeadContent && getHeadContent()) || '';
+      if (!headContent) {
+        return mjml2html(input, opts);
+      }
 
-    return classes;
+      // Avoid double injecting if fragment already includes mj-head
+      if (/<mj-head[\s>]/i.test(input)) {
+        return mjml2html(input, opts);
+      }
+
+      // Inject right after the opening <mjml ...> tag
+      const withHead = input.replace(
+        /<mjml(\s[^>]*)?>/i,
+        (m) => `${m}<mj-head>${headContent}</mj-head>`
+      );
+
+      return mjml2html(withHead, opts);
+    };
   }
 
   /**
-   * Apply mj-class styles to components that have mj-class attribute.
-   * This ensures theme token styles are reflected in the editor.
-   * @param {Editor} editor - GrapesJS editor instance
-   * @param {Object} mjClassDefinitions - Map of class names to attributes
+   * Remove component "style-default" attributes when the component uses `mj-class`.
+   * This prevents GrapesJS-MJML default attributes (eg. mj-text font-size="13px",
+   * mj-button background-color="#414141", paddings, etc.) from overriding your theme
+   * tokens defined in `<mj-attributes>/<mj-class>`.
+   *
+   * It only strips attributes that exactly match the component's `style-default`,
+   * so user-provided overrides remain.
+   *
+   * @param {Editor} editor
    */
-  applyMjClassStylesToComponents(editor, mjClassDefinitions) {
-    if (!mjClassDefinitions || Object.keys(mjClassDefinitions).length === 0) return;
+  stripDefaultAttrsForTokenizedComponents(editor) {
+    const wrapper = editor.getWrapper?.();
+    if (!wrapper) return;
 
-    const processComponent = (component) => {
-      const attrs = component.get('attributes') || {};
-      const mjClassAttr = attrs['mj-class'];
+    const walk = (cmp) => {
+      const attrs = { ...(cmp.get('attributes') || {}) };
+      const mjClass = attrs['mj-class'];
 
-      if (mjClassAttr) {
-        // mj-class can have multiple classes: "t-btn t-btn-primary"
-        const classNames = mjClassAttr.split(/\s+/);
-        const mergedAttrs = { ...attrs };
+      if (mjClass) {
+        const styleDefault = cmp.get('style-default') || {};
+        let changed = false;
 
-        // Apply each class's attributes (later classes override earlier ones)
-        classNames.forEach(className => {
-          const classAttrs = mjClassDefinitions[className];
-          if (classAttrs) {
-            Object.assign(mergedAttrs, classAttrs);
+        Object.keys(styleDefault).forEach((key) => {
+          if (key in attrs && attrs[key] === styleDefault[key]) {
+            delete attrs[key];
+            changed = true;
           }
         });
 
-        // Update component attributes
-        component.set('attributes', mergedAttrs);
-
-        // Also update the style (GrapesJS uses style for visual representation)
-        const currentStyle = component.get('style') || {};
-        component.set('style', { ...currentStyle, ...mergedAttrs });
+        if (changed) {
+          cmp.set('attributes', attrs);
+        }
       }
 
-      // Process child components
-      const children = component.get('components');
-      if (children) {
-        children.forEach(child => processComponent(child));
+      const children = cmp.components?.();
+      if (children && children.length) {
+        children.forEach((child) => walk(child));
       }
     };
 
-    // Process all components in the editor
-    const wrapper = editor.getWrapper();
-    if (wrapper) {
-      const components = wrapper.get('components');
-      if (components) {
-        components.forEach(component => processComponent(component));
-      }
-    }
-  }
-
-  /**
-   * Override MJML component views to inject mj-head content into their
-   * MJML compilation wrappers. This ensures theme tokens (mj-attributes, mj-class)
-   * are applied when components render in the editor canvas.
-   *
-   * @param {Editor} editor - GrapesJS editor instance
-   * @param {string} mjHeadContent - The inner content of mj-head from the theme
-   */
-  injectMjHeadIntoComponentViews(editor, mjHeadContent) {
-    if (!mjHeadContent) return;
-
-    const mjHeadWrapper = `<mj-head>${mjHeadContent}</mj-head>`;
-
-    // List of all MJML component types that need the mj-head injection
-    const mjmlComponentTypes = [
-      'mj-text', 'mj-button', 'mj-image', 'mj-divider', 'mj-spacer',
-      'mj-social', 'mj-social-element', 'mj-navbar', 'mj-navbar-link',
-      'mj-section', 'mj-column', 'mj-wrapper', 'mj-group', 'mj-hero',
-      'mj-raw', 'mj-body',
-    ];
-
-    mjmlComponentTypes.forEach((typeName) => {
-      const existingType = editor.DomComponents.getType(typeName);
-      if (!existingType) return;
-
-      // Get the View class (not the config object)
-      const ViewClass = existingType.view;
-
-      // Check if this type has a view with getMjmlTemplate on its prototype
-      if (!ViewClass || !ViewClass.prototype || typeof ViewClass.prototype.getMjmlTemplate !== 'function') {
-        return;
-      }
-
-      // Store reference to original method
-      const originalGetMjmlTemplate = ViewClass.prototype.getMjmlTemplate;
-
-      // Patch getMjmlTemplate to inject mj-head
-      ViewClass.prototype.getMjmlTemplate = function() {
-        const original = originalGetMjmlTemplate.call(this);
-
-        // Inject mj-head after <mjml> tag in the start wrapper
-        const enhancedStart = original.start.replace(
-          '<mjml>',
-          `<mjml>${mjHeadWrapper}`
-        );
-
-        return {
-          start: enhancedStart,
-          end: original.end,
-        };
-      };
-    });
+    wrapper.components?.().forEach((c) => walk(c));
   }
 
   /**
@@ -698,16 +627,6 @@ export default class BuilderService {
     if (!this.editor) {
       throw Error('No editor found');
     }
-
-    this.patchApplyFormCommandForSubmitGuard();
-
-    // Why would we not want to keep the history?
-    //
-    // this.editor.on('load', () => {
-    //   const um = this.editor.UndoManager;
-    //   // Clear stack of undo/redo
-    //   um.clear();
-    // });
 
     const keymaps = this.editor.Keymaps;
     let allKeymaps;
@@ -1254,27 +1173,26 @@ export default class BuilderService {
 
   initEmailMjml() {
     const components = MjmlService.getOriginalContentMjml();
+
     // validate
     MjmlService.mjmlToHtml(components);
 
-    // Extract mj-head content for theme token injection into component rendering
+    // Cache mj-head inner content BEFORE init, so the parser wrapper can use it
     this.cachedMjHeadContent = this.extractMjHeadContent(components);
 
     const styles = [
       `${mauticBaseUrl}plugins/GrapesJsBuilderBundle/Assets/library/js/grapesjs-editor.css`
     ];
 
-    const ckeditorModuleUrl = BuilderService.getCkeditorModuleUrl();
-    const inlineElements = BuilderService.getInlineElements();
-    const emailCkEditorOptions = BuilderService.getCkeConf('email:getBuilderTokens');
-    const emailInlineOptions = BuilderService.buildInlineCkeConf(emailCkEditorOptions);
+    // Wrap MJML parser so that all fragment compilations include <mj-head> tokens
+    const headInjectingParser = this.createHeadInjectingMjmlParser(() => this.cachedMjHeadContent);
 
     this.editor = grapesjs.init({
       selectorManager: {
         componentFirst: true,
       },
-      avoidInlineStyle: false, // TEMP: fixes issue with disappearing inline styles
-      forceClass: false, // create new styles if there are some already on the element: https://github.com/GrapesJS/grapesjs/issues/1531
+      avoidInlineStyle: false,
+      forceClass: false,
       clearOnRender: true,
       container: '.builder-panel',
       height: '100%',
@@ -1282,8 +1200,7 @@ export default class BuilderService {
         styles,
       },
       domComponents: {
-        // disable all except link components
-        disableTextInnerChilds: (child) => !child.is('link'), // https://github.com/GrapesJS/grapesjs/releases/tag/v0.21.2
+        disableTextInnerChilds: (child) => !child.is('link'),
       },
       storageManager: false,
       assetManager: this.getAssetManagerConf(),
@@ -1293,6 +1210,7 @@ export default class BuilderService {
           hideSelector: false,
           custom: false,
           useCustomTheme: false,
+          mjmlParser: headInjectingParser,
         },
         grapesjsmautic: BuilderService.getMauticConf('email-mjml'),
         [grapesjsckeditor]: {
@@ -1312,29 +1230,16 @@ export default class BuilderService {
       },
     });
 
-    // Inject mj-head into component views for proper theme token rendering in canvas
-    // Must be done AFTER grapesjs.init() (so component types are registered) but BEFORE setComponents()
-    if (this.cachedMjHeadContent) {
-      this.injectMjHeadIntoComponentViews(this.editor, this.cachedMjHeadContent);
-    }
-
-    // Parse mj-class definitions for applying to components
-    this.mjClassDefinitions = this.parseMjClassDefinitions(this.cachedMjHeadContent);
-
     this.unsetComponentVoidTypes(this.editor);
     this.editor.setComponents(components);
 
     // Reinitialize the content after parsing MJML.
-    // This can be removed once the issue with self-closing tags is resolved in grapesjs-mjml.
     // See: https://github.com/GrapesJS/mjml/issues/149
     const parsedContent = MjmlService.getEditorMjmlContent(this.editor);
     this.editor.setComponents(parsedContent);
 
-    // Apply mj-class styles to components after they're loaded
-    // This ensures theme token values are set on component attributes
-    if (this.mjClassDefinitions && Object.keys(this.mjClassDefinitions).length > 0) {
-      this.applyMjClassStylesToComponents(this.editor, this.mjClassDefinitions);
-    }
+    // Critical: allow mj-class tokens to win over grapesjs-mjml defaults in the canvas
+    this.stripDefaultAttrsForTokenizedComponents(this.editor);
 
     this.editor.BlockManager.get('mj-button').set({
       content: '<mj-button href="https://">Button</mj-button>',
@@ -1595,169 +1500,5 @@ export default class BuilderService {
     if (rawblock !== null) {
       this.editor.BlockManager.remove(rawblock);
     }
-  }
-
-  setupTypographySectorVisibility() {
-    if (!this.editor || this.typographySectorInitialized) {
-      return;
-    }
-
-    const styleManager = this.editor.StyleManager;
-    if (!styleManager || typeof styleManager.getSector !== 'function') {
-      return;
-    }
-
-    const sector = styleManager.getSector('typography');
-    if (!sector) {
-      return;
-    }
-
-    this.typographySector = sector;
-    // Delay updates slightly so GrapesJS finishes its own selection bookkeeping before we toggle the sector.
-    const scheduleUpdate = (target, delay) => this.scheduleTypographySectorVisibilityUpdate(target, delay);
-    const selectionDelay = 15;
-
-    this.editor.on('component:selected', (component) => scheduleUpdate(component, selectionDelay));
-    this.editor.on('component:deselected', () => this.scheduleTypographySectorVisibilityUpdate(null, selectionDelay));
-    this.editor.on('rte:enable', (component) => scheduleUpdate(component, selectionDelay));
-    this.editor.on('rte:disable', () => this.scheduleTypographySectorVisibilityUpdate(null, selectionDelay));
-
-    this.typographySectorInitialized = true;
-    this.scheduleTypographySectorVisibilityUpdate(null, selectionDelay);
-  }
-
-  scheduleTypographySectorVisibilityUpdate(target, delay = 0) {
-    if (!this.typographySector) {
-      return;
-    }
-
-    this.clearTypographySectorUpdateTimeout();
-
-    const run = () => {
-      this.typographySectorTimeout = null;
-      this.updateTypographySectorVisibility(target);
-    };
-
-    this.typographySectorTimeout = this.scheduleTypographyTimeout(run, delay);
-  }
-
-  clearTypographySectorUpdateTimeout() {
-    if (!this.typographySectorTimeout) {
-      return;
-    }
-
-    const timeoutId = this.typographySectorTimeout;
-    this.typographySectorTimeout = null;
-
-    if (typeof window !== 'undefined' && typeof window.clearTimeout === 'function') {
-      window.clearTimeout(timeoutId);
-      return;
-    }
-
-    clearTimeout(timeoutId);
-  }
-
-  scheduleTypographyTimeout(callback, delay = 0) {
-    const timeoutDelay = typeof delay === 'number' && delay > 0 ? delay : 0;
-
-    if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
-      return window.setTimeout(callback, timeoutDelay);
-    }
-
-    return setTimeout(callback, timeoutDelay);
-  }
-
-  updateTypographySectorVisibility(target = null) {
-    const styleManager = this.editor?.StyleManager;
-    if (!styleManager || typeof styleManager.getSector !== 'function') {
-      return;
-    }
-
-    const sector = styleManager.getSector('typography');
-    if (!sector) {
-      return;
-    }
-
-    this.typographySector = sector;
-
-    const component = this.getTypographyTargetComponent(target);
-    const shouldHide = this.shouldHideTypographySector(component);
-
-    this.setTypographySectorModelVisibility(sector, shouldHide);
-    this.setTypographySectorDomVisibility(sector, shouldHide);
-  }
-
-  getTypographyTargetComponent(target) {
-    const resolvedTarget = this.resolveComponentFromTarget(target);
-    if (resolvedTarget) {
-      return resolvedTarget;
-    }
-
-    if (this.editor && typeof this.editor.getSelected === 'function') {
-      return this.editor.getSelected();
-    }
-
-    return null;
-  }
-
-  setTypographySectorModelVisibility(sector, shouldHide) {
-    if (typeof sector.set === 'function') {
-      sector.set('visible', !shouldHide);
-      return;
-    }
-
-    sector.visible = !shouldHide;
-  }
-
-  setTypographySectorDomVisibility(sector, shouldHide) {
-    const sectorEl = this.resolveTypographySectorElement(sector);
-
-    if (sectorEl) {
-      sectorEl.style.display = shouldHide ? 'none' : '';
-    }
-  }
-
-  resolveTypographySectorElement(sector) {
-    const sectorId = typeof sector.getId === 'function' ? sector.getId() : 'typography';
-    const editorContainer = this.editor && typeof this.editor.getContainer === 'function'
-      ? this.editor.getContainer()
-      : null;
-
-    if (editorContainer) {
-      const sectorEl = editorContainer.querySelector(`.gjs-sm-sector[id*="${sectorId}"]`);
-      if (sectorEl) {
-        return sectorEl;
-      }
-    }
-
-    if (sector.view?.el) {
-      return sector.view.el;
-    }
-
-    return null;
-  }
-
-  resolveComponentFromTarget(target) {
-    if (!target) {
-      return null;
-    }
-
-    if (typeof target.get === 'function' && typeof target.getId === 'function') {
-      return target;
-    }
-
-    if (target.model && typeof target.model.get === 'function') {
-      return target.model;
-    }
-
-    if (target.component && typeof target.component.get === 'function') {
-      return target.component;
-    }
-
-    return null;
-  }
-
-  shouldHideTypographySector(component) {
-    return true;
   }
 }
