@@ -6,6 +6,7 @@ use Mautic\CoreBundle\Controller\AbstractFormController;
 use Mautic\CoreBundle\Exception\InvalidDecodedStringException;
 use Mautic\CoreBundle\Helper\CookieHelper;
 use Mautic\CoreBundle\Helper\IpLookupHelper;
+use Mautic\CoreBundle\Helper\PathsHelper;
 use Mautic\CoreBundle\Helper\TrackingPixelHelper;
 use Mautic\CoreBundle\Helper\UrlHelper;
 use Mautic\CoreBundle\Security\Permissions\CorePermissions;
@@ -27,6 +28,8 @@ use Mautic\PageBundle\Model\Tracking404Model;
 use Mautic\PageBundle\Model\VideoModel;
 use Mautic\PageBundle\PageEvents;
 use Psr\Log\LoggerInterface;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -49,6 +52,7 @@ class PublicController extends AbstractFormController
         AssetsHelper $assetsHelper,
         Tracking404Model $tracking404Model,
         RouterInterface $router,
+        PathsHelper $pathsHelper,
         $slug)
     {
         /** @var PageModel $model */
@@ -289,6 +293,27 @@ class PublicController extends AbstractFormController
 
             $model->hitPage($entity, $request, 200, $lead, $query);
 
+            if ($request->query->getInt('pdf') === 1) {
+                $content = $this->injectPrintStylesheets($content, $pathsHelper);
+
+                $options = new Options();
+                $options->set('isRemoteEnabled', true);
+                $dompdf = new Dompdf($options);
+                $dompdf->loadHtml($content);
+                $dompdf->setPaper('A4', 'portrait');
+                $dompdf->render();
+                $pdfOutput = $dompdf->output();
+
+                return new Response(
+                    $pdfOutput,
+                    200,
+                    [
+                        'Content-Type'        => 'application/pdf',
+                        'Content-Disposition' => 'inline; filename="'.$entity->getAlias().'.pdf"',
+                    ]
+                );
+            }
+
             return new Response($content);
         }
 
@@ -297,6 +322,53 @@ class PublicController extends AbstractFormController
         }
 
         return $this->notFound();
+    }
+
+    /**
+     * Finds all <link media="print"> stylesheets in the HTML, reads them from the filesystem,
+     * and injects their content as inline <style> blocks before </head>.
+     * This ensures DomPDF applies print styles without needing to fetch remote URLs.
+     */
+    private function injectPrintStylesheets(string $content, PathsHelper $pathsHelper): string
+    {
+        $themesPath = $pathsHelper->getThemesPath();
+        $rootPath   = $pathsHelper->getSystemPath('root', true);
+
+        // Match <link ... media="print" ...> tags (any attribute order)
+        if (!preg_match_all('/<link[^>]+media=["\']print["\'][^>]*>/i', $content, $linkMatches)) {
+            return $content;
+        }
+
+        $inlineStyles = '';
+        foreach ($linkMatches[0] as $linkTag) {
+            if (!preg_match('/href=["\']([^"\']+)["\']/', $linkTag, $hrefMatch)) {
+                continue;
+            }
+
+            $href = $hrefMatch[1];
+
+            // Strip query string / fragment
+            $href = preg_replace('/[?#].*$/', '', $href);
+
+            // Convert absolute URL to filesystem path by matching the /themes/ segment
+            if (preg_match('#/themes/(.+)$#', $href, $pathMatch)) {
+                $filePath = $themesPath.'/'.$pathMatch[1];
+            } elseif (str_starts_with($href, '/')) {
+                $filePath = $rootPath.$href;
+            } else {
+                continue;
+            }
+
+            if (is_file($filePath)) {
+                $inlineStyles .= file_get_contents($filePath);
+            }
+        }
+
+        if ($inlineStyles !== '') {
+            $content = str_replace('</head>', '<style>'.$inlineStyles.'</style></head>', $content);
+        }
+
+        return $content;
     }
 
     /**
