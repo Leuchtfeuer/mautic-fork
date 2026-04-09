@@ -139,10 +139,15 @@ class ComplexRelationValueFilterQueryBuilder extends BaseFilterQueryBuilder
                     $expressions[] = $queryBuilder->expr()->$operator($tableAlias.'.'.$filter->getField(), $parameter);
                 }
 
+                if (empty($expressions)) {
+                    $expression = $queryBuilder->expr()->and($applyIsNull ? '1 = 1' : '1 = 0');
+                    break;
+                }
+
                 if ($applyIsNull) {
                     if ($applyNot) {
                         $expression = $queryBuilder->expr()->or(
-                            (string) new \Doctrine\ORM\Query\Expr\Func('NOT', (string) $queryBuilder->expr()->$filterGlue(...$expressions)),
+                            'NOT('.(string) $queryBuilder->expr()->$filterGlue(...$expressions).')',
                             $queryBuilder->expr()->isNull($tableAlias.'.'.$filter->getField())
                         );
                     } else {
