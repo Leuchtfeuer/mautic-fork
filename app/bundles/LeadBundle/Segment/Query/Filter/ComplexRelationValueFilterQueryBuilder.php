@@ -111,13 +111,49 @@ class ComplexRelationValueFilterQueryBuilder extends BaseFilterQueryBuilder
                 break;
             case 'multiselect':
             case '!multiselect':
-                $operator    = 'multiselect' === $filterOperator ? 'regexp' : 'notRegexp';
+                /**
+                 * Given company fields REX1, REX2:
+                 * Including all: and(regexp) function must succeed if both fields are matched: REX1 AND REX2
+                 * Excluding all: not(and(regexp)) function must succeed if both fields are matched, or the field is NULL: NOT (REX1 AND REX2) OR IS NULL
+                 * Including any: or(regexp) function must succeed: REX1 OR REX2
+                 * Excluding any: and(notRegexp) function must succeed, or field is null: (NOT REX1 AND NOT REX2) OR IS NULL
+                 */
+                $filterArray      = $filter->contactSegmentFilterCrate->getArray();
+                $originalOperator = $filterArray['operator'];
+                $applyIsNull      = in_array($originalOperator, [OperatorOptions::EXCLUDING_ALL, OperatorOptions::EXCLUDING_ANY], true);
+                $applyNot         = OperatorOptions::EXCLUDING_ALL === $originalOperator;
+
+                $operator = 'regexp';
+                if (OperatorOptions::EXCLUDING_ANY === $originalOperator) {
+                    $operator = 'notRegexp';
+                }
+
+                if (in_array($originalOperator, [OperatorOptions::INCLUDING_ALL, OperatorOptions::EXCLUDING_ALL, OperatorOptions::EXCLUDING_ANY], true)) {
+                    $filterGlue = 'and';
+                } else {
+                    $filterGlue = 'or';
+                }
+
                 $expressions = [];
                 foreach ($filterParametersHolder as $parameter) {
                     $expressions[] = $queryBuilder->expr()->$operator($tableAlias.'.'.$filter->getField(), $parameter);
                 }
 
-                $expression = $queryBuilder->expr()->and(...$expressions);
+                if ($applyIsNull) {
+                    if ($applyNot) {
+                        $expression = $queryBuilder->expr()->or(
+                            (string) new \Doctrine\ORM\Query\Expr\Func('NOT', (string) $queryBuilder->expr()->$filterGlue(...$expressions)),
+                            $queryBuilder->expr()->isNull($tableAlias.'.'.$filter->getField())
+                        );
+                    } else {
+                        $expression = $queryBuilder->expr()->or(
+                            $queryBuilder->expr()->$filterGlue(...$expressions),
+                            $queryBuilder->expr()->isNull($tableAlias.'.'.$filter->getField())
+                        );
+                    }
+                } else {
+                    $expression = $queryBuilder->expr()->$filterGlue(...$expressions);
+                }
                 break;
             case OperatorOptions::INCLUDING_ALL:
                 // Single-select field can't match all values at once - always false for multiple values.
