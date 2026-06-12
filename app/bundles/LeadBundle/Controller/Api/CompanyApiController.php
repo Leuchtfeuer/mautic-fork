@@ -15,9 +15,11 @@ use Mautic\LeadBundle\Controller\LeadAccessTrait;
 use Mautic\LeadBundle\Entity\Company;
 use Mautic\LeadBundle\Entity\Lead;
 use Mautic\LeadBundle\Helper\IdentifyCompanyHelper;
+use Mautic\LeadBundle\Model\BatchCompanyContactAssignmentModel;
 use Mautic\LeadBundle\Model\CompanyModel;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactoryInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\RouterInterface;
@@ -35,9 +37,22 @@ class CompanyApiController extends CommonApiController
      */
     protected $model;
 
-    public function __construct(CorePermissions $security, Translator $translator, EntityResultHelper $entityResultHelper, RouterInterface $router, FormFactoryInterface $formFactory, AppVersion $appVersion, RequestStack $requestStack, ManagerRegistry $doctrine, ModelFactory $modelFactory, EventDispatcherInterface $dispatcher, CoreParametersHelper $coreParametersHelper, MauticFactory $factory)
-    {
-        $companyModel = $modelFactory->getModel('lead.company');
+    public function __construct(
+        CorePermissions $security,
+        Translator $translator,
+        EntityResultHelper $entityResultHelper,
+        RouterInterface $router,
+        FormFactoryInterface $formFactory,
+        AppVersion $appVersion,
+        RequestStack $requestStack,
+        ManagerRegistry $doctrine,
+        ModelFactory $modelFactory,
+        EventDispatcherInterface $dispatcher,
+        CoreParametersHelper $coreParametersHelper,
+        MauticFactory $factory,
+        private BatchCompanyContactAssignmentModel $batchCompanyContactAssignmentModel,
+    ) {
+        $companyModel = $modelFactory->getModel(CompanyModel::class);
         \assert($companyModel instanceof CompanyModel);
 
         $this->model              = $companyModel;
@@ -97,6 +112,38 @@ class CompanyApiController extends CommonApiController
         $this->model->addLeadToCompany($company, $contact);
 
         return $this->handleView($view);
+    }
+
+    /**
+     * Assigns multiple contacts to multiple companies in one request.
+     */
+    public function batchAddContactsAction(Request $request): Response
+    {
+        if (!$this->security->isGranted('lead:leads:editown') && !$this->security->isGranted('lead:leads:editother')) {
+            return $this->accessDenied();
+        }
+
+        $parameters  = $request->request->all();
+        $assignments = $parameters['assignments'] ?? null;
+
+        if (!is_array($assignments) || [] === $assignments) {
+            return $this->returnError('"assignments" parameter is required and must be a non-empty array', Response::HTTP_BAD_REQUEST);
+        }
+
+        foreach ($assignments as $entry) {
+            if (!is_array($entry)) {
+                return $this->returnError('Assignments entries must be a non-empty array', Response::HTTP_BAD_REQUEST);
+            }
+        }
+
+        $valid = $this->validateBatchPayload($assignments);
+        if ($valid instanceof Response) {
+            return $valid;
+        }
+
+        $payload = $this->batchCompanyContactAssignmentModel->process($assignments);
+
+        return $this->handleView($this->view($payload, Response::HTTP_OK));
     }
 
     /**
