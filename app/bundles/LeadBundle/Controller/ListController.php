@@ -7,8 +7,6 @@ namespace Mautic\LeadBundle\Controller;
 use Doctrine\ORM\EntityNotFoundException;
 use Mautic\CoreBundle\Controller\FormController;
 use Mautic\CoreBundle\Controller\QuickFilterSearchTrait;
-use Mautic\CoreBundle\Exception\DeleteEntitiesDependencyException;
-use Mautic\CoreBundle\Exception\DeleteEntityDependencyException;
 use Mautic\CoreBundle\Factory\PageHelperFactoryInterface;
 use Mautic\CoreBundle\Form\Type\DateRangeType;
 use Mautic\CoreBundle\Helper\InputHelper;
@@ -91,7 +89,7 @@ final class ListController extends FormController
         $this->setListFilters();
 
         // set limits
-        $limit = $session->get('mautic.lead.list.limit', $this->coreParametersHelper->get('default_pagelimit'));
+        $limit = $session->get('mautic.segment.limit', $this->coreParametersHelper->get('default_pagelimit'));
         $start = (1 === $page) ? 0 : (($page - 1) * $limit);
         if ($start < 0) {
             $start = 0;
@@ -101,8 +99,8 @@ final class ListController extends FormController
         $session->set('mautic.segment.filter', $search);
 
         // do some default filtering
-        $orderBy    = $session->get('mautic.lead.list.orderby', 'l.dateModified');
-        $orderByDir = $session->get('mautic.lead.list.orderbydir', $this->getDefaultOrderDirection());
+        $orderBy    = $session->get('mautic.segment.orderby', 'l.dateModified');
+        $orderByDir = $session->get('mautic.segment.orderbydir', $this->getDefaultOrderDirection());
 
         $filter = [
             'string' => $search,
@@ -493,149 +491,15 @@ final class ListController extends FormController
 
     /**
      * Delete a list.
-     *
-     * @return Response
      */
-    public function deleteAction(Request $request, $objectId)
+    public function deleteAction(Request $request, int $objectId): Response
     {
-        $page      = $request->getSession()->get('mautic.segment.page', 1);
-        $returnUrl = $this->generateUrl('mautic_segment_index', ['page' => $page]);
-
-        $flashes = [];
-
-        $postActionVars = [
-            'returnUrl'       => $returnUrl,
-            'viewParameters'  => ['page' => $page],
-            'contentTemplate' => 'Mautic\LeadBundle\Controller\ListController::indexAction',
-            'passthroughVars' => [
-                'activeLink'    => '#mautic_segment_index',
-                'mauticContent' => 'lead',
-            ],
-        ];
-
-        if ('POST' === $request->getMethod()) {
-            $list  = $this->listModel->getEntity($objectId);
-
-            if (null === $list) {
-                $flashes[] = [
-                    'type'    => 'error',
-                    'msg'     => 'mautic.lead.list.error.notfound',
-                    'msgVars' => ['%id%' => $objectId],
-                ];
-            } elseif (!$this->security->hasEntityAccess(
-                LeadPermissions::LISTS_DELETE_OWN, LeadPermissions::LISTS_DELETE_OTHER, $list->getCreatedBy()
-            )
-            ) {
-                $this->throwAccessDenied();
-            } elseif ($this->listModel->isLocked($list)) {
-                return $this->isLocked($postActionVars, $list, 'lead.list');
-            } else {
-                try {
-                    $this->listModel->deleteEntity($list);
-                    $flashes[] = [
-                        'type'    => 'notice',
-                        'msg'     => 'mautic.core.notice.deleted',
-                        'msgVars' => [
-                            '%name%' => $list->getName(),
-                            '%id%'   => $objectId,
-                        ],
-                    ];
-                } catch (DeleteEntityDependencyException $deletedException) {
-                    foreach ($deletedException->getErrors() as $error) {
-                        $flashes[] = [
-                            'type' => 'error',
-                            'msg'  => $error,
-                        ];
-                    }
-                }
-            }
-        } // else don't do anything
-
-        return $this->postActionRedirect(
-            array_merge($postActionVars, [
-                'flashes' => $flashes,
-            ])
-        );
+        return $this->deleteStandard($request, $objectId);
     }
 
-    /**
-     * Deletes a group of entities.
-     */
-    public function batchDeleteAction(Request $request, ListModel $model): Response
+    public function batchDeleteAction(Request $request): Response
     {
-        $page      = $request->getSession()->get('mautic.segment.page', 1);
-        $returnUrl = $this->generateUrl('mautic_segment_index', ['page' => $page]);
-        $flashes   = [];
-
-        $postActionVars = [
-            'returnUrl'       => $returnUrl,
-            'viewParameters'  => ['page' => $page],
-            'contentTemplate' => 'Mautic\LeadBundle\Controller\ListController::indexAction',
-            'passthroughVars' => [
-                'activeLink'    => '#mautic_segment_index',
-                'mauticContent' => 'lead',
-            ],
-        ];
-
-        if ('POST' === $request->getMethod()) {
-            $ids       = json_decode($request->query->get('ids', '{}'));
-            $deleteIds = [];
-
-            // Loop over the IDs to perform access checks pre-delete
-            foreach ($ids as $objectId) {
-                $entity = $model->getEntity($objectId);
-
-                if (null === $entity) {
-                    $flashes[] = [
-                        'type'    => 'error',
-                        'msg'     => 'mautic.lead.list.error.notfound',
-                        'msgVars' => ['%id%' => $objectId],
-                    ];
-                } elseif (!$this->security->hasEntityAccess(
-                    LeadPermissions::LISTS_DELETE_OWN, LeadPermissions::LISTS_DELETE_OTHER, $entity->getCreatedBy()
-                )) {
-                    $flashes[] = $this->getAccessDeniedFlash();
-                } elseif ($model->isLocked($entity)) {
-                    $flashes[] = $this->isLocked($postActionVars, $entity, 'lead.list', true);
-                } else {
-                    $deleteIds[] = $objectId;
-                }
-            }
-
-            if ([] !== $deleteIds) {
-                try {
-                    $deletedEntities = $model->deleteEntities($deleteIds);
-                } catch (DeleteEntitiesDependencyException $e) {
-                    $deletedEntities = $e->getDeletedEntities();
-
-                    if ($e->getUnableToDeleteEntities()) {
-                        $flashes[] = [
-                            'type'    => 'error',
-                            'msg'     => 'mautic.lead.list.error.cannot.delete.batch',
-                            'msgVars' => [
-                                '%segments%' => implode(', ', array_map(fn (LeadList $entity) => $entity->getName(), $e->getUnableToDeleteEntities())),
-                            ],
-                        ];
-                    }
-                }
-
-                if ([] !== $deletedEntities) {
-                    $flashes[] = [
-                        'type'    => 'notice',
-                        'msg'     => 'mautic.lead.list.notice.batch_deleted',
-                        'msgVars' => [
-                            '%count%' => count($deletedEntities),
-                        ],
-                    ];
-                }
-            }
-        }
-
-        return $this->postActionRedirect(
-            array_merge($postActionVars, [
-                'flashes' => $flashes,
-            ])
-        );
+        return $this->batchDeleteStandard($request);
     }
 
     public function removeLeadAction(Request $request, $objectId): Response
@@ -841,6 +705,29 @@ final class ListController extends FormController
     protected function getModelName(): string
     {
         return 'lead.list';
+    }
+
+    protected function getTranslationBase(): string
+    {
+        return 'mautic.'.$this->getModelName();
+    }
+
+    protected function getRouteBase(): string
+    {
+        return 'segment';
+    }
+
+    /**
+     * @param mixed $objectId
+     */
+    protected function getSessionBase($objectId = null): string
+    {
+        return $this->getRouteBase();
+    }
+
+    protected function getJsLoadMethodPrefix(): string
+    {
+        return 'lead';
     }
 
     protected function getIndexItems($start, $limit, $filter, $orderBy, $orderByDir, array $args = []): array

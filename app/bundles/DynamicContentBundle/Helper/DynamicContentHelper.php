@@ -217,6 +217,7 @@ class DynamicContentHelper
     public function convertLeadToArray($lead): array
     {
         return array_merge(
+            ['id' => $lead->getId()], // Ensure ID is always present
             $lead->getProfileFields(),
             [
                 'tags' => array_map(

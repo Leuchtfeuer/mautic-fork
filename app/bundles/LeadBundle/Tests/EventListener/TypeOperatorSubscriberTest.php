@@ -13,8 +13,11 @@ use Mautic\LeadBundle\Event\FormAdjustmentEvent;
 use Mautic\LeadBundle\Event\ListFieldChoicesEvent;
 use Mautic\LeadBundle\Event\TypeOperatorsEvent;
 use Mautic\LeadBundle\EventListener\TypeOperatorSubscriber;
+use Mautic\LeadBundle\Model\CompanySegmentModel;
 use Mautic\LeadBundle\Model\LeadModel;
 use Mautic\LeadBundle\Model\ListModel;
+use Mautic\LeadBundle\Provider\FieldChoicesProviderInterface;
+use Mautic\LeadBundle\Provider\TypeOperatorProviderInterface;
 use Mautic\LeadBundle\Segment\OperatorOptions;
 use Mautic\StageBundle\Entity\StageRepository;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -104,6 +107,9 @@ final class TypeOperatorSubscriberTest extends \PHPUnit\Framework\TestCase
             $this->categoryModel,
             $this->assetModel,
             $translator,
+            $this->createStub(CompanySegmentModel::class),
+            $this->createStub(FieldChoicesProviderInterface::class),
+            $this->createStub(TypeOperatorProviderInterface::class),
             $stageRepository
         );
 

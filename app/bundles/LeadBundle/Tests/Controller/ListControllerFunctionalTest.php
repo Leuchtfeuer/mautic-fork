@@ -81,6 +81,8 @@ final class ListControllerFunctionalTest extends MauticMysqlTestCase
         $crawler = $this->client->request(Request::METHOD_GET, '/s/segments/edit/'.$segment->getId());
         self::assertResponseIsSuccessful();
         $this->assertGreaterThan(0, $crawler->filter('#leadlist_filters_0_operator option')->count());
+        $this->assertCount(1, $crawler->filter('#leadlist_filters_0 .copy-filter-group'));
+        $this->assertCount(1, $crawler->filter('#leadlist_filters_0 .remove-selected'));
     }
 
     public function testSegmentWithProject(): void
@@ -531,6 +533,19 @@ final class ListControllerFunctionalTest extends MauticMysqlTestCase
         $this->assertStringContainsString($expectedErrorMessage, (string) $clientResponseBody['flashes']);
     }
 
+    public function testDeleteActionRequiresPost(): void
+    {
+        $segment   = $this->saveSegment('GET delete segment', 'get-delete-segment');
+        $segmentId = $segment->getId();
+
+        $this->client->request(Request::METHOD_GET, '/s/segments/delete/'.$segmentId);
+
+        $this->assertResponseIsSuccessful();
+
+        $this->em->clear();
+        $this->assertInstanceOf(LeadList::class, $this->listRepo->find($segmentId));
+    }
+
     public function testBatchDeleteUsedInCampaignSegment(): void
     {
         $list1  = $this->saveSegment('s1', 's1');
@@ -554,11 +569,13 @@ final class ListControllerFunctionalTest extends MauticMysqlTestCase
         ]);
 
         $expectedErrorMessage = $this->translator->trans(
-            'mautic.lead.list.error.cannot.delete.batch',
+            'mautic.lead.lists.used_in_campaigns.delete',
             [
-                '%segments%'  => $list1->getName().', '.$list2->getName(),
+                '%campaignNames%' => '"'.$campaignName.'"',
+                '%segmentNames%'  => $list1->getName(),
+                '%count%'         => 1,
             ],
-            'flashes'
+            'validators'
         );
 
         $parameters = 'ids=["'.$list1->getId().'","'.$list2->getId().'"]';

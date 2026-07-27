@@ -14,6 +14,7 @@ use Mautic\DynamicContentBundle\Form\Type\DynamicContentListType;
 use Mautic\DynamicContentBundle\Form\Type\DynamicContentType;
 use Mautic\LeadBundle\Entity\LeadRepository;
 use Mautic\LeadBundle\Helper\FormFieldHelper;
+use Mautic\LeadBundle\Model\CompanySegmentModel;
 use Mautic\LeadBundle\Model\LeadModel;
 use Mautic\LeadBundle\Model\ListModel;
 use Mautic\LeadBundle\Segment\RelativeDate;
@@ -33,6 +34,7 @@ final class DynamicContentTypeTest extends TestCase
         $translatorInterfaceMock = $this->createStub(TranslatorInterface::class);
         $leadModelMock           = $this->createMock(LeadModel::class);
         $relativeDateMock        = $this->createStub(RelativeDate::class);
+        $companySegmentModelMock = $this->createMock(CompanySegmentModel::class);
 
         $listModelMock->expects($this->once())
             ->method('getChoiceFields')
@@ -54,6 +56,10 @@ final class DynamicContentTypeTest extends TestCase
             ->method('getTagList')
             ->willReturn($tags);
 
+        $companySegmentModelMock->expects($this->once())
+            ->method('getCompanySegments')
+            ->willReturn([]);
+
         $dynamicContentType = new DynamicContentType(
             $entityManagerMock,
             $listModelMock,
@@ -61,6 +67,7 @@ final class DynamicContentTypeTest extends TestCase
             $leadModelMock,
             new TypeList(),
             $relativeDateMock,
+            $companySegmentModelMock,
         );
 
         $formBuilderInterfaceMock = $this->createMock(FormBuilderInterface::class);
@@ -98,21 +105,22 @@ final class DynamicContentTypeTest extends TestCase
                     $this->assertSame([
                         'entry_type'     => DwcEntryFiltersType::class,
                         'entry_options'  => [
-                            'countries'    => FormFieldHelper::getCountryChoices(),
-                            'regions'      => FormFieldHelper::getRegionChoices(),
-                            'timezones'    => FormFieldHelper::getTimezonesChoices(),
-                            'locales'      => FormFieldHelper::getLocaleChoices(),
-                            'fields'       => $this->getMockChoiceFields(),
-                            'deviceTypes'  => array_combine(
+                            'countries'       => FormFieldHelper::getCountryChoices(),
+                            'regions'         => FormFieldHelper::getRegionChoices(),
+                            'timezones'       => FormFieldHelper::getTimezonesChoices(),
+                            'locales'         => FormFieldHelper::getLocaleChoices(),
+                            'fields'          => $this->getMockChoiceFields(),
+                            'deviceTypes'     => array_combine(
                                 DeviceParser::getAvailableDeviceTypeNames(),
                                 DeviceParser::getAvailableDeviceTypeNames()
                             ),
-                            'deviceBrands' => DeviceParser::$deviceBrands,
-                            'deviceOs'     => array_combine(
+                            'deviceBrands'    => DeviceParser::$deviceBrands,
+                            'deviceOs'        => array_combine(
                                 array_keys(OperatingSystem::getAvailableOperatingSystemFamilies()),
                                 array_keys(OperatingSystem::getAvailableOperatingSystemFamilies())
                             ),
-                            'tags'         => $tagChoices,
+                            'tags'            => $tagChoices,
+                            'companySegments' => [],
                         ],
                         'error_bubbling' => false,
                         'mapped'         => true,

@@ -21,6 +21,7 @@ use Mautic\LeadBundle\Entity\LeadListRepository;
 use Mautic\LeadBundle\Entity\LeadRepository;
 use Mautic\LeadBundle\EventListener\CampaignSubscriber;
 use Mautic\LeadBundle\Model\CompanyModel;
+use Mautic\LeadBundle\Model\CompanySegmentModel;
 use Mautic\LeadBundle\Model\DoNotContact;
 use Mautic\LeadBundle\Model\FieldModel;
 use Mautic\LeadBundle\Model\LeadModel;
@@ -162,6 +163,7 @@ final class CampaignSubscriberTest extends \PHPUnit\Framework\TestCase
             $this->mockLeadModel,
             $this->createStub(FieldModel::class),
             $this->mockCompanyModel,
+            $this->createStub(CompanySegmentModel::class),
             $this->createStub(CampaignModel::class),
             $mockCoreParametersHelper,
             $this->doNotContact,

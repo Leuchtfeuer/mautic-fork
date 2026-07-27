@@ -5,6 +5,8 @@ namespace Mautic\CoreBundle\Controller;
 use Doctrine\Persistence\ManagerRegistry;
 use Mautic\CoreBundle\Entity\FormEntity;
 use Mautic\CoreBundle\Entity\OptimisticLockInterface;
+use Mautic\CoreBundle\Exception\DeleteEntitiesDependencyException;
+use Mautic\CoreBundle\Exception\DeleteEntityDependencyException;
 use Mautic\CoreBundle\Factory\ModelFactory;
 use Mautic\CoreBundle\Form\Type\DateRangeType;
 use Mautic\CoreBundle\Helper\CoreParametersHelper;
@@ -145,15 +147,24 @@ abstract class AbstractStandardFormController extends AbstractFormController
 
             // Delete everything we are able to
             if (!empty($deleteIds)) {
-                $entities = $model->deleteEntities($deleteIds);
+                try {
+                    $entities = $model->deleteEntities($deleteIds);
+                } catch (DeleteEntitiesDependencyException $e) {
+                    $entities = $e->getDeletedEntities();
+                    foreach ($e->getErrors() as $error) {
+                        $flashes[] = ['type' => 'error', 'msg' => $error];
+                    }
+                }
 
-                $flashes[] = [
-                    'type'    => 'notice',
-                    'msg'     => $this->getTranslatedString('notice.batch_deleted'),
-                    'msgVars' => [
-                        '%count%' => count($entities),
-                    ],
-                ];
+                if ($entities) {
+                    $flashes[] = [
+                        'type'    => 'notice',
+                        'msg'     => $this->getTranslatedString('notice.batch_deleted'),
+                        'msgVars' => [
+                            '%count%' => count($entities),
+                        ],
+                    ];
+                }
             }
         } // else don't do anything
 
@@ -300,19 +311,24 @@ abstract class AbstractStandardFormController extends AbstractFormController
                 $this->throwAccessDenied();
             } elseif ($model->isLocked($entity)) {
                 return $this->isLocked($postActionVars, $entity, $this->getModelName());
+            } else {
+                try {
+                    $model->deleteEntity($entity);
+                    $identifier = $this->translator->trans($entity->getName());
+                    $flashes[]  = [
+                        'type'    => 'notice',
+                        'msg'     => 'mautic.core.notice.deleted',
+                        'msgVars' => [
+                            '%name%' => $identifier,
+                            '%id%'   => $objectId,
+                        ],
+                    ];
+                } catch (DeleteEntityDependencyException $e) {
+                    foreach ($e->getErrors() as $error) {
+                        $flashes[] = ['type' => 'error', 'msg' => $error];
+                    }
+                }
             }
-
-            $model->deleteEntity($entity);
-
-            $identifier = $this->translator->trans($entity->getName());
-            $flashes[]  = [
-                'type'    => 'notice',
-                'msg'     => 'mautic.core.notice.deleted',
-                'msgVars' => [
-                    '%name%' => $identifier,
-                    '%id%'   => $objectId,
-                ],
-            ];
         } // else don't do anything
 
         return $this->postActionRedirect(
@@ -709,7 +725,7 @@ abstract class AbstractStandardFormController extends AbstractFormController
      */
     protected function getTranslatedString($string)
     {
-        return $this->translator->hasId($this->getTranslationBase().'.'.$string) ? $this->getTranslationBase()
+        return $this->translator->hasId($this->getTranslationBase().'.'.$string, 'flashes') ? $this->getTranslationBase()
             .'.'.$string : 'mautic.core.'.$string;
     }
 

@@ -410,9 +410,6 @@ class ImportModel extends FormModel
             $this->saveEntity($import);
         }
 
-        // Close the file
-        $file = null;
-
         return true;
     }
 
