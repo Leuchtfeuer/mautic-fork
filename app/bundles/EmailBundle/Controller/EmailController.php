@@ -570,6 +570,7 @@ class EmailController extends FormController
                         'updateSelect' => $form['updateSelect']->getData(),
                         'id'           => $entity->getId(),
                         'name'         => $entity->getName(),
+                        'optionLabel'  => sprintf('(%s) %s', $entity->getId(), $entity->getName()),
                         'group'        => $entity->getLanguage(),
                     ]
                 );
@@ -773,6 +774,7 @@ class EmailController extends FormController
                         'updateSelect' => $form['updateSelect']->getData(),
                         'id'           => $entity->getId(),
                         'name'         => $entity->getName(),
+                        'optionLabel'  => sprintf('(%s) %s', $entity->getId(), $entity->getName()),
                         'group'        => $entity->getLanguage(),
                     ]
                 );
